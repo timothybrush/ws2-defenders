@@ -49,7 +49,7 @@ One decision cannot be delegated to engineering: how much prompt, response, and 
 
 ### 2.2 For the open source security community
 
-Every adjacent standard has its own appendix, stating what this field set already maps onto, what that standard cannot currently express, and the specific additions proposed. Start with yours.
+Each adjacent open specification has its own appendix, stating what this field set already maps onto, what that standard cannot currently express, and the specific additions proposed. Start with yours.
 
 | Community | Appendix | What is proposed |
 | :------------- | :---- | :-------------------------------------------------------------------------------------- |
@@ -61,7 +61,7 @@ Every adjacent standard has its own appendix, stating what this field set alread
 
 Several Appendix E asks already have live OCSF vehicles from CoSAI-adjacent work, and Appendix E references them rather than proposing anew: the normalized stop reason is [ocsf-schema#1704](https://github.com/ocsf/ocsf-schema/pull/1704); the `ai_tool` / MCP object is drafted in [ocsf-schema#1729](https://github.com/ocsf/ocsf-schema/pull/1729) with a worked five-event example; the agent trust-base inventory and declared-versus-executed split are proposed as a Discovery class in [ocsf-schema#1724](https://github.com/ocsf/ocsf-schema/issues/1724); the agent-activity and delegation-activity classes trace to [ocsf-schema#1640](https://github.com/ocsf/ocsf-schema/issues/1640). Event-sequence integrity is already ratified as the `record_integrity` profile in OCSF 1.9.0 ([ocsf-schema#1661](https://github.com/ocsf/ocsf-schema/pull/1661)).
 
-**AITF** [[19]](#standards--frameworks), the AI Telemetry Framework, donated to CoSAI Workstream 2, is the bridge between this document and both of those destinations, OpenTelemetry for emission, OCSF for consumption. It carries these fields as OpenTelemetry attributes today and emits them into OCSF ahead of formal ratification, so adopters are not blocked on either standards body. The field-level mapping is **Appendix C**; completing it is CoSAI's own work, in hand before final publication.
+**AITF** [[19]](#standards--frameworks), the AI Telemetry Framework, donated to CoSAI Workstream 2, is the bridge between this document and both of those destinations, OpenTelemetry for emission, OCSF for consumption. It carries these fields as OpenTelemetry attributes today and emits them into OCSF ahead of formal ratification, so adopters are not blocked on either standards body. The field-level mapping is **Appendix C**; completing it is CoSAI's own work, in hand before final publication. **NIST** (AI RMF and CSF, including the Cyber AI Profile) and **ISO/IEC 42001** are consumers of this field set rather than destinations for proposals, so they are not in the table above; their mappings are [Appendix H](#appendix-h-implications-for-nist-ai-rmf-and-nist-csf-incl-the-cyber-ai-profile) and [Appendix I](#appendix-i-implications-for-isoiec-42001).
 
 - **They are evidence-gated and therefore small.** A field becomes a standardization ask only once two or more independent documented attacks require it. Nothing is proposed speculatively.
 - **Emission and consumption move together.** A field OpenTelemetry emits but OCSF cannot represent arrives at the SIEM as unstructured overflow; a field OCSF defines but no instrumentation produces stays theoretical. Paired asks are the intent.
