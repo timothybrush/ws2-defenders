@@ -526,16 +526,16 @@ Table 3. Zero Trust publication frameworks comparison
 * Nik Kale, Cisco
 * Victor Lu  
 * Asmae Mhassni , Intel
-* Dhaval Parekh, 
+* Dhaval Parekh, Zscaler
 * David Pierce, Paypal
 * Marina Zeldin, Dell
 
 ## Editors
 
 * Jason Garman, Amazon 
-* Josiah Hagen  
+* Josiah Hagen, indepedent
 * Igor Pedan, Dell  
-* Bill Stout
+* Bill Stout, independent
 
 ## Reviewers
 
