@@ -1,8 +1,16 @@
-"""AITF OCSF Category 7 Event Classes.
+"""AITF OCSF AI Event Classes (class-reuse model).
 
-Defines all ten AI event classes (7001-7010) for OCSF integration.
-Based on event classes from the AITelemetry project, extended
-for AITF with MCP, Skills, ModelOps, Asset Inventory, and enhanced agent support.
+Defines the ten AI event types, each mapped onto its reused OCSF class rather
+than a bespoke category. Based on event classes from the AITelemetry project,
+extended for AITF with MCP, Skills, ModelOps, Asset Inventory, and enhanced
+agent support.
+
+Every ``class_uid`` here is a **released OCSF v1.9.0 class**. AITF's earlier
+Category 7 (7001-7010) and the later provisional ``ai`` category (9001-9003)
+have both been retired: v1.9.0 solved agent attribution by landing ``ai_agent``
+and ``delegation`` on the ``ai_operation`` profile and attaching that profile to
+the ``system``, ``network``, ``application`` and ``iam`` base classes, and it
+ships no category above uid 8. See ``schema.LEGACY_AI_CLASS_UIDS``.
 """
 
 from __future__ import annotations
@@ -13,22 +21,26 @@ from pydantic import Field
 
 from aitf.ocsf.schema import (
     AIBaseEvent,
-    AIClassUID,
     AICostInfo,
     AILatencyMetrics,
     AIModelInfo,
     AISecurityFinding,
     AITeamInfo,
     AITokenUsage,
+    OCSFAgentMessage,
+    OCSFCategoryUID,
+    OCSFClassUID,
 )
 
 
 class AIModelInferenceEvent(AIBaseEvent):
-    """OCSF Class 7001: AI Model Inference.
+    """AI model inference — reuses OCSF API Activity (6003).
 
-    Represents an AI model inference operation (request + response).
+    The model call is an API operation; AI specifics ride on the
+    ``ai_operation`` profile (``ai_agent``, ``ai_model``).
     """
-    class_uid: int = AIClassUID.MODEL_INFERENCE
+    category_uid: int = OCSFCategoryUID.APPLICATION
+    class_uid: int = OCSFClassUID.API_ACTIVITY
     model: AIModelInfo
     token_usage: AITokenUsage = Field(default_factory=AITokenUsage)
     latency: AILatencyMetrics | None = None
@@ -42,11 +54,21 @@ class AIModelInferenceEvent(AIBaseEvent):
 
 
 class AIAgentActivityEvent(AIBaseEvent):
-    """OCSF Class 7002: AI Agent Activity.
+    """Agent lifecycle and reasoning steps — reuses OCSF API Activity (6003).
 
-    Represents an AI agent lifecycle event (session, step, delegation).
+    An agent step *is* an operation, so it maps onto API Activity and carries
+    attribution on the ``ai_operation`` profile (``ai_agent``, ``delegation``),
+    which OCSF v1.9.0 attached to the ``application`` base class.
+
+    Previously emitted as provisional ``agent_activity`` (9001) in a proposed
+    ``ai`` category. That category was never ratified — OCSF v1.9.0 ships no
+    category above uid 8 — so it has been retired. Deployments that model agent
+    *session* start/stop separately from reasoning steps MAY emit those two
+    activities as Application Lifecycle (6002) instead; both are category 6 and
+    both carry the same ``ai_operation`` attribution.
     """
-    class_uid: int = AIClassUID.AGENT_ACTIVITY
+    category_uid: int = OCSFCategoryUID.APPLICATION
+    class_uid: int = OCSFClassUID.API_ACTIVITY
     agent_name: str
     agent_id: str
     agent_type: str = "autonomous"
@@ -61,12 +83,28 @@ class AIAgentActivityEvent(AIBaseEvent):
     team_info: AITeamInfo | None = None
 
 
-class AIToolExecutionEvent(AIBaseEvent):
-    """OCSF Class 7003: AI Tool Execution.
+class AIAgentCommunicationEvent(AIBaseEvent):
+    """Agent-to-agent communication (A2A / ACP / ANP / MCP) — API Activity (6003).
 
-    Represents a tool/function execution, including MCP tools and skills.
+    A single generic event for inter-agent messaging across protocols. These
+    protocols are RPC over HTTP, so the message is an API operation; the wire
+    protocol is a discriminator on the ``agent_message`` object rather than a
+    dedicated class per protocol.
+
+    Previously emitted as provisional ``agent_communication`` (9003) in a
+    proposed ``ai`` category that OCSF never ratified. ``agent_message`` itself
+    remains an AITF-proposed object — it did **not** ship in v1.9.0 — and is
+    carried as an extension pending the agent-message PR.
     """
-    class_uid: int = AIClassUID.TOOL_EXECUTION
+    category_uid: int = OCSFCategoryUID.APPLICATION
+    class_uid: int = OCSFClassUID.API_ACTIVITY
+    agent_message: OCSFAgentMessage
+
+
+class AIToolExecutionEvent(AIBaseEvent):
+    """Tool/MCP/function execution — reuses OCSF API Activity (6003)."""
+    category_uid: int = OCSFCategoryUID.APPLICATION
+    class_uid: int = OCSFClassUID.API_ACTIVITY
     tool_name: str
     tool_type: str  # "function", "mcp_tool", "skill", "api"
     tool_input: str | None = None
@@ -82,11 +120,9 @@ class AIToolExecutionEvent(AIBaseEvent):
 
 
 class AIDataRetrievalEvent(AIBaseEvent):
-    """OCSF Class 7004: AI Data Retrieval.
-
-    Represents RAG and vector search operations.
-    """
-    class_uid: int = AIClassUID.DATA_RETRIEVAL
+    """RAG / vector search — reuses OCSF Datastore Activity (6005)."""
+    category_uid: int = OCSFCategoryUID.APPLICATION
+    class_uid: int = OCSFClassUID.DATASTORE_ACTIVITY
     database_name: str
     database_type: str
     query: str | None = None
@@ -103,20 +139,16 @@ class AIDataRetrievalEvent(AIBaseEvent):
 
 
 class AISecurityFindingEvent(AIBaseEvent):
-    """OCSF Class 7005: AI Security Finding.
-
-    Represents a security finding in AI operations.
-    """
-    class_uid: int = AIClassUID.SECURITY_FINDING
+    """AI security finding — reuses OCSF Detection Finding (2004)."""
+    category_uid: int = OCSFCategoryUID.FINDINGS
+    class_uid: int = OCSFClassUID.DETECTION_FINDING
     finding: AISecurityFinding
 
 
 class AISupplyChainEvent(AIBaseEvent):
-    """OCSF Class 7006: AI Supply Chain.
-
-    Represents AI supply chain events (model provenance, integrity).
-    """
-    class_uid: int = AIClassUID.SUPPLY_CHAIN
+    """AI supply chain — reuses OCSF Vulnerability Finding (2002)."""
+    category_uid: int = OCSFCategoryUID.FINDINGS
+    class_uid: int = OCSFClassUID.VULNERABILITY_FINDING
     model_source: str
     model_hash: str | None = None
     model_license: str | None = None
@@ -131,11 +163,9 @@ class AISupplyChainEvent(AIBaseEvent):
 
 
 class AIGovernanceEvent(AIBaseEvent):
-    """OCSF Class 7007: AI Governance.
-
-    Represents compliance and governance events.
-    """
-    class_uid: int = AIClassUID.GOVERNANCE
+    """AI governance/compliance — reuses OCSF Compliance Finding (2003)."""
+    category_uid: int = OCSFCategoryUID.FINDINGS
+    class_uid: int = OCSFClassUID.COMPLIANCE_FINDING
     frameworks: list[str] = Field(default_factory=list)
     controls: str | None = None  # JSON
     event_type: str = ""
@@ -146,11 +176,14 @@ class AIGovernanceEvent(AIBaseEvent):
 
 
 class AIIdentityEvent(AIBaseEvent):
-    """OCSF Class 7008: AI Identity.
+    """Agent identity/auth — reuses OCSF Authentication (3002, IAM).
 
-    Represents agent identity and authentication events.
+    Delegation *lifecycle* maps to the new ``delegation_activity`` in the ai
+    category; the delegation context itself rides on the ``ai_operation``
+    profile (``delegation`` object) regardless of class.
     """
-    class_uid: int = AIClassUID.IDENTITY
+    category_uid: int = OCSFCategoryUID.IAM
+    class_uid: int = OCSFClassUID.AUTHENTICATION
     agent_name: str
     agent_id: str
     auth_method: str  # "api_key", "oauth", "mtls", "jwt"
@@ -162,12 +195,9 @@ class AIIdentityEvent(AIBaseEvent):
 
 
 class AIModelOpsEvent(AIBaseEvent):
-    """OCSF Class 7009: AI Model Operations.
-
-    Represents model lifecycle operations: training, evaluation,
-    deployment, serving, and monitoring.
-    """
-    class_uid: int = AIClassUID.MODEL_OPS
+    """Model lifecycle ops — reuses OCSF Application Lifecycle (6002)."""
+    category_uid: int = OCSFCategoryUID.APPLICATION
+    class_uid: int = OCSFClassUID.APPLICATION_LIFECYCLE
     operation_type: str  # "training", "evaluation", "deployment", "serving", "monitoring", "prompt"
     model_id: str | None = None
     run_id: str | None = None
@@ -201,12 +231,9 @@ class AIModelOpsEvent(AIBaseEvent):
 
 
 class AIAssetInventoryEvent(AIBaseEvent):
-    """OCSF Class 7010: AI Asset Inventory.
-
-    Represents AI asset lifecycle events: registration, discovery,
-    audit, classification, and decommissioning.
-    """
-    class_uid: int = AIClassUID.ASSET_INVENTORY
+    """AI asset inventory — reuses OCSF Inventory Info (5001, Discovery)."""
+    category_uid: int = OCSFCategoryUID.DISCOVERY
+    class_uid: int = OCSFClassUID.INVENTORY_INFO
     operation_type: str  # "register", "discover", "audit", "classify", "decommission"
     asset_id: str | None = None
     asset_name: str | None = None

@@ -1,6 +1,6 @@
 {
   "name": "@aitf/sdk",
-  "version": "1.0.0",
+  "version": "0.4.0",
   "description": "AI Telemetry Framework (AITF) SDK for JavaScript/TypeScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

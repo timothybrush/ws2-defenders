@@ -331,7 +331,7 @@ with skill_instr.trace_compose(
     # 6a: Route escalation notification
     with skill_instr.trace_invoke(
         skill_name="escalation-router",
-        version="1.1.0",
+        version="1.9.0",
         provider="builtin",
         category="workflow",
         description="Route high-priority cases to the right team",

@@ -68,17 +68,18 @@ _OCSF_TO_CEF_SEVERITY: dict[int, int] = {
     6: 10,  # Fatal -> 10
 }
 
+# OCSF class names for the classes AITF reuses (OCSF PR #1641 / issue #1640).
+# AI specificity is carried in the ai_operation profile (ai_agent, ai_model).
 _CLASS_UID_TO_NAME: dict[int, str] = {
-    7001: "AI Model Inference",
-    7002: "AI Agent Activity",
-    7003: "AI Tool Execution",
-    7004: "AI Data Retrieval",
-    7005: "AI Security Finding",
-    7006: "AI Supply Chain Event",
-    7007: "AI Governance Event",
-    7008: "AI Identity Event",
-    7009: "AI Model Operations Event",
-    7010: "AI Asset Inventory Event",
+    2002: "Vulnerability Finding",
+    2003: "Compliance Finding",
+    2004: "Detection Finding",
+    3002: "Authentication",
+    3003: "Authorize Session",
+    5001: "Inventory Info",
+    6002: "Application Lifecycle",
+    6003: "API Activity",
+    6005: "Datastore Activity",
 }
 
 
@@ -103,7 +104,7 @@ def ocsf_event_to_cef(
     event: dict[str, Any],
     vendor: str = "AITF",
     product: str = "AI-Telemetry-Framework",
-    version: str = "1.0.0",
+    version: str = "0.4.0",
 ) -> str:
     """Convert an OCSF event dict to a CEF syslog message.
 
@@ -147,7 +148,7 @@ def ocsf_event_to_cef(
     extensions.append("cs1Label=ocsf_class_uid")
     extensions.append(f"cs2={activity_id}")
     extensions.append("cs2Label=ocsf_activity_id")
-    extensions.append(f"cs3={event.get('category_uid', 7)}")
+    extensions.append(f"cs3={event.get('category_uid', 6)}")
     extensions.append("cs3Label=ocsf_category_uid")
 
     # Model information
@@ -417,7 +418,7 @@ class CEFSyslogExporter(SpanExporter):
         tls_verify: bool = True,
         vendor: str = "AITF",
         product: str = "AI-Telemetry-Framework",
-        version: str = "1.0.0",
+        version: str = "0.4.0",
         batch_size: int = 100,
     ) -> None:
         self._transport = SyslogTransport(

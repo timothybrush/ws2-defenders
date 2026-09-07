@@ -1,6 +1,11 @@
 """AITF OCSF Mapper.
 
-Maps OpenTelemetry spans to OCSF Category 7 AI events (7001-7010).
+Maps OpenTelemetry spans to OCSF events under AITF's class-reuse model
+as released in OCSF v1.9.0 (which merged PR #1641): all AI activity reuses
+existing OCSF classes (API Activity, Datastore Activity, Findings, IAM,
+Discovery, Application Lifecycle) enriched with the ``ai_operation`` profile.
+Agent, delegation and agent-comm lifecycle reuse released classes too — the
+``ai`` category (uid 9) they once targeted was never ratified.
 Based on the OCSF mapper from the AITelemetry project, enhanced
 for AITF with MCP, Skills, Identity, ModelOps, Asset Inventory,
 and extended agent support.
@@ -13,8 +18,15 @@ from typing import Any
 
 from opentelemetry.sdk.trace import ReadableSpan
 
+from aitf.ocsf.crosswalk import (
+    build_agent_message,
+    build_ai_agent,
+    build_delegation,
+    build_delegation_lineage,
+)
 from aitf.ocsf.event_classes import (
     AIAgentActivityEvent,
+    AIAgentCommunicationEvent,
     AIAssetInventoryEvent,
     AIDataRetrievalEvent,
     AIGovernanceEvent,
@@ -56,7 +68,7 @@ from aitf.semantic_conventions.attributes import (
 
 
 class OCSFMapper:
-    """Maps OTel spans to OCSF Category 7 AI events.
+    """Maps OTel spans to OCSF AI events (class-reuse model).
 
     Usage:
         mapper = OCSFMapper()
@@ -69,35 +81,63 @@ class OCSFMapper:
         """Map an OTel span to an OCSF event.
 
         Returns the appropriate OCSF event class or None if the span
-        is not an AI-related span.  Covers all 10 AITF OCSF classes
-        (7001-7010).
+        is not an AI-related span.  Covers all 10 AITF AI event types
+        mapped onto their reused OCSF classes.
         """
         name = span.name or ""
         attrs = dict(span.attributes or {})
 
         # Determine event type and map accordingly
+        event: AIBaseEvent | None
         if self._is_inference_span(name, attrs):
-            return self._map_inference(span, attrs)
+            event = self._map_inference(span, attrs)
+        elif self._is_agent_comm_span(name, attrs):
+            event = self._map_agent_communication(span, attrs)
         elif self._is_agent_span(name, attrs):
-            return self._map_agent_activity(span, attrs)
+            event = self._map_agent_activity(span, attrs)
         elif self._is_tool_span(name, attrs):
-            return self._map_tool_execution(span, attrs)
+            event = self._map_tool_execution(span, attrs)
         elif self._is_rag_span(name, attrs):
-            return self._map_data_retrieval(span, attrs)
+            event = self._map_data_retrieval(span, attrs)
         elif self._is_security_span(name, attrs):
-            return self._map_security_finding(span, attrs)
+            event = self._map_security_finding(span, attrs)
         elif self._is_supply_chain_span(name, attrs):
-            return self._map_supply_chain(span, attrs)
+            event = self._map_supply_chain(span, attrs)
         elif self._is_governance_span(name, attrs):
-            return self._map_governance(span, attrs)
+            event = self._map_governance(span, attrs)
         elif self._is_identity_span(name, attrs):
-            return self._map_identity(span, attrs)
+            event = self._map_identity(span, attrs)
         elif self._is_model_ops_span(name, attrs):
-            return self._map_model_ops(span, attrs)
+            event = self._map_model_ops(span, attrs)
         elif self._is_asset_inventory_span(name, attrs):
-            return self._map_asset_inventory(span, attrs)
+            event = self._map_asset_inventory(span, attrs)
+        else:
+            return None
 
-        return None
+        return self._enrich_ai_operation(event, attrs)
+
+    def _enrich_ai_operation(self, event: AIBaseEvent, attrs: dict) -> AIBaseEvent:
+        """Attach the OCSF ``ai_operation`` profile to a mapped event.
+
+        Populates the OCSF ``ai_agent`` object (PR #1641) and ``delegation``
+        context (issue #1640) so AITF events carry OCSF-conformant agentic
+        attribution regardless of the reused class.
+        """
+        ai_agent = build_ai_agent(attrs)
+        if ai_agent is not None:
+            event.ai_agent = ai_agent
+            if event.ai_model is None:
+                event.ai_model = ai_agent.ai_model
+
+        delegation = build_delegation(attrs)
+        if delegation is not None:
+            event.delegation = delegation
+
+        lineage = build_delegation_lineage(attrs)
+        if lineage is not None:
+            event.delegation_lineage = lineage
+
+        return event
 
     def _is_inference_span(self, name: str, attrs: dict) -> bool:
         return (
@@ -122,14 +162,15 @@ class OCSFMapper:
     def _is_rag_span(self, name: str, attrs: dict) -> bool:
         return (
             name.startswith("rag.")
-            or RAGAttributes.RETRIEVE_DATABASE in attrs
+            or GenAIAttributes.DATA_SOURCE_ID in attrs
+            or RAGAttributes.RETRIEVE_INDEX in attrs
         )
 
     def _is_security_span(self, name: str, attrs: dict) -> bool:
         return SecurityAttributes.THREAT_DETECTED in attrs
 
     def _map_inference(self, span: ReadableSpan, attrs: dict) -> AIModelInferenceEvent:
-        """Map inference span to OCSF 7001."""
+        """Map inference span to OCSF API Activity (6003)."""
         model_id = str(attrs.get(GenAIAttributes.REQUEST_MODEL, "unknown"))
         system = str(attrs.get(GenAIAttributes.PROVIDER_NAME) or attrs.get(GenAIAttributes.SYSTEM, "unknown"))
         operation = str(attrs.get(GenAIAttributes.OPERATION_NAME, "chat"))
@@ -189,7 +230,7 @@ class OCSFMapper:
         )
 
     def _map_agent_activity(self, span: ReadableSpan, attrs: dict) -> AIAgentActivityEvent:
-        """Map agent span to OCSF 7002."""
+        """Map agent span to OCSF API Activity (6003) with ``ai_operation``."""
         name = span.name or ""
         agent_name = str(attrs.get(GenAIAttributes.AGENT_NAME, "unknown"))
         agent_id = str(attrs.get(GenAIAttributes.AGENT_ID, "unknown"))
@@ -222,8 +263,36 @@ class OCSFMapper:
             time=_span_time(span),
         )
 
+    def _is_agent_comm_span(self, name: str, attrs: dict) -> bool:
+        return (
+            name.startswith("a2a.")
+            or name.startswith("acp.")
+            or name.startswith("anp.")
+            or any(k.startswith(("a2a.", "acp.", "anp.", "agent.comm.")) for k in attrs)
+        )
+
+    def _map_agent_communication(self, span: ReadableSpan, attrs: dict) -> AIAgentCommunicationEvent | None:
+        """Map an A2A/ACP/ANP span to OCSF agent_communication (ai category)."""
+        msg = build_agent_message(attrs)
+        if msg is None:
+            return None
+
+        # activity_id from direction: 1 Send, 2 Receive, 3 Stream, 4 Notify.
+        direction_map = {"request": 1, "response": 2, "stream": 3, "notification": 4}
+        activity_id = direction_map.get(msg.direction or "", 99)
+
+        status_id = OCSFStatus.FAILURE if (msg.status == "failed" or msg.error_code) else OCSFStatus.SUCCESS
+
+        return AIAgentCommunicationEvent(
+            activity_id=activity_id,
+            status_id=status_id,
+            agent_message=msg,
+            message=span.name or f"agent.comm.{msg.protocol or 'unknown'}",
+            time=_span_time(span),
+        )
+
     def _map_tool_execution(self, span: ReadableSpan, attrs: dict) -> AIToolExecutionEvent:
-        """Map tool/MCP/skill span to OCSF 7003."""
+        """Map tool/MCP/skill span to OCSF API Activity (6003)."""
         # Determine tool type
         if GenAIAttributes.TOOL_NAME in attrs:
             tool_name = str(attrs[GenAIAttributes.TOOL_NAME])
@@ -257,8 +326,8 @@ class OCSFMapper:
         )
 
     def _map_data_retrieval(self, span: ReadableSpan, attrs: dict) -> AIDataRetrievalEvent:
-        """Map RAG/retrieval span to OCSF 7004."""
-        database = str(attrs.get(RAGAttributes.RETRIEVE_DATABASE, "unknown"))
+        """Map RAG/retrieval span to OCSF Datastore Activity (6005)."""
+        database = str(attrs.get(GenAIAttributes.DATA_SOURCE_ID, "unknown"))
         stage = str(attrs.get(RAGAttributes.PIPELINE_STAGE, "retrieve"))
 
         # Activity: 1=vector_search, 2=document_retrieval, 5=reranking
@@ -269,8 +338,8 @@ class OCSFMapper:
             activity_id=activity_id,
             database_name=database,
             database_type=database,
-            query=_opt_str(attrs.get(RAGAttributes.QUERY)),
-            top_k=_opt_int(attrs.get(RAGAttributes.RETRIEVE_TOP_K)),
+            query=_opt_str(attrs.get(GenAIAttributes.RETRIEVAL_QUERY_TEXT)),
+            top_k=_opt_int(attrs.get(GenAIAttributes.REQUEST_TOP_K)),
             results_count=int(attrs.get(RAGAttributes.RETRIEVE_RESULTS_COUNT, 0)),
             min_score=_opt_float(attrs.get(RAGAttributes.RETRIEVE_MIN_SCORE)),
             max_score=_opt_float(attrs.get(RAGAttributes.RETRIEVE_MAX_SCORE)),
@@ -283,7 +352,7 @@ class OCSFMapper:
         )
 
     def _map_security_finding(self, span: ReadableSpan, attrs: dict) -> AISecurityFindingEvent:
-        """Map security span to OCSF 7005."""
+        """Map security span to OCSF Detection Finding (2004)."""
         finding = AISecurityFinding(
             finding_type=str(attrs.get(SecurityAttributes.THREAT_TYPE, "unknown")),
             owasp_category=_opt_str(attrs.get(SecurityAttributes.OWASP_CATEGORY)),
@@ -319,7 +388,7 @@ class OCSFMapper:
         )
 
     def _map_supply_chain(self, span: ReadableSpan, attrs: dict) -> AISupplyChainEvent:
-        """Map supply chain span to OCSF 7006."""
+        """Map supply chain span to OCSF Vulnerability Finding (2002)."""
         name = span.name or ""
 
         # Activity: 1=verify, 2=audit, 3=sign, 4=validate
@@ -355,7 +424,7 @@ class OCSFMapper:
         )
 
     def _map_governance(self, span: ReadableSpan, attrs: dict) -> AIGovernanceEvent:
-        """Map governance/compliance span to OCSF 7007."""
+        """Map governance/compliance span to OCSF Compliance Finding (2003)."""
         name = span.name or ""
 
         # Activity: 1=audit, 2=assessment, 3=violation, 4=remediation
@@ -394,7 +463,7 @@ class OCSFMapper:
         )
 
     def _map_identity(self, span: ReadableSpan, attrs: dict) -> AIIdentityEvent:
-        """Map identity span to OCSF 7008."""
+        """Map identity span to OCSF Authentication (3002)."""
         name = span.name or ""
 
         # Activity: 1=authenticate, 2=authorize, 3=delegate, 4=trust, 5=lifecycle, 6=session
@@ -448,7 +517,7 @@ class OCSFMapper:
         )
 
     def _map_model_ops(self, span: ReadableSpan, attrs: dict) -> AIModelOpsEvent:
-        """Map model operations / drift detection span to OCSF 7009."""
+        """Map model operations / drift detection span to OCSF Application Lifecycle (6002)."""
         name = span.name or ""
 
         # Determine operation type and activity
@@ -539,7 +608,7 @@ class OCSFMapper:
         )
 
     def _map_asset_inventory(self, span: ReadableSpan, attrs: dict) -> AIAssetInventoryEvent:
-        """Map asset inventory span to OCSF 7010."""
+        """Map asset inventory span to OCSF Inventory Info (5001)."""
         name = span.name or ""
 
         # Activity: 1=register, 2=discover, 3=audit, 4=classify, 5=decommission

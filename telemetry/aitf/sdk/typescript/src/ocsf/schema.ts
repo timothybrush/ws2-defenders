@@ -1,9 +1,14 @@
 /**
  * AITF OCSF Base Schema.
  *
- * OCSF v1.1.0 base objects and AI-specific extension models.
- * Based on the OCSF schema from the AITelemetry project, enhanced
- * for AITF Category 7 AI events.
+ * OCSF v1.9.0 base objects and AI-specific extension models.
+ *
+ * OCSF v1.9.0 (released 2026-08-03) landed the `ai_agent` and `delegation`
+ * objects and the `ai_operation` profile, and attached that profile to the
+ * `system`, `network`, `application` and `iam` base classes. AITF therefore
+ * emits AI telemetry on released OCSF classes carrying `ai_operation`, and
+ * no longer proposes a dedicated `ai` category — OCSF `categories.json`
+ * stops at uid 8 (`unmanned_systems`).
  */
 
 import { randomUUID } from "crypto";
@@ -36,19 +41,130 @@ export enum OCSFActivity {
   OTHER = 99,
 }
 
-/** AITF OCSF Category 7 class UIDs. */
-export enum AIClassUID {
-  MODEL_INFERENCE = 7001,
-  AGENT_ACTIVITY = 7002,
-  TOOL_EXECUTION = 7003,
-  DATA_RETRIEVAL = 7004,
-  SECURITY_FINDING = 7005,
-  SUPPLY_CHAIN = 7006,
-  GOVERNANCE = 7007,
-  IDENTITY = 7008,
-  MODEL_OPS = 7009,
-  ASSET_INVENTORY = 7010,
+/**
+ * OCSF category UIDs that AITF AI events map onto.
+ *
+ * Following OCSF's "reuse existing objects and profiles" approach — which
+ * OCSF v1.9.0 ratified — AITF emits all AI telemetry under existing OCSF
+ * categories enriched with the `ai_operation` profile.
+ *
+ * There is deliberately no `AI` member. OCSF `categories.json` stops at
+ * uid 8 (`unmanned_systems`); a dedicated AI category was never ratified,
+ * so AITF does not emit one. See `LEGACY_AI_CLASS_UIDS`.
+ */
+export enum OCSFCategoryUID {
+  FINDINGS = 2,
+  IAM = 3,
+  DISCOVERY = 5,
+  APPLICATION = 6,
 }
+
+/**
+ * OCSF event class UIDs that AITF AI events map onto.
+ *
+ * Every UID below is a released OCSF class. Control-plane lifecycle
+ * (agent, delegation, agent-to-agent communication) reuses released classes
+ * carrying the `ai_operation` profile rather than bespoke 9xxx classes.
+ */
+export enum OCSFClassUID {
+  // Reused existing OCSF classes (verified against OCSF v1.9.0).
+  VULNERABILITY_FINDING = 2002,
+  COMPLIANCE_FINDING = 2003,
+  DETECTION_FINDING = 2004,
+  ACCOUNT_CHANGE = 3001,
+  AUTHENTICATION = 3002,
+  AUTHORIZE_SESSION = 3003,
+  ENTITY_MANAGEMENT = 3004,
+  USER_ACCESS_MANAGEMENT = 3005,
+  INVENTORY_INFO = 5001,
+  WEB_RESOURCES_ACTIVITY = 6001,
+  APPLICATION_LIFECYCLE = 6002,
+  API_ACTIVITY = 6003,
+  DATASTORE_ACTIVITY = 6005,
+}
+
+/**
+ * Decode table for telemetry recorded by AITF <= 0.4, when AITF proposed a
+ * dedicated `ai` category (uid 9) with classes 9001-9003. OCSF v1.9.0 shipped
+ * the `ai_operation` profile on released base classes instead, so those UIDs
+ * are retired. Retained so historical events remain decodable.
+ */
+export const LEGACY_AI_CLASS_UIDS: Record<number, OCSFClassUID> = {
+  9001: OCSFClassUID.API_ACTIVITY, // agent_activity
+  9002: OCSFClassUID.AUTHORIZE_SESSION, // delegation_activity
+  9003: OCSFClassUID.API_ACTIVITY, // agent_communication
+};
+
+/**
+ * Backward-compatible alias. AITF previously defined a bespoke Category 7 with
+ * classes 7001-7010; events now reuse the OCSF classes above per OCSF's
+ * object/profile-reuse model. Kept so existing imports keep working.
+ */
+export const AIClassUID = OCSFClassUID;
+
+/**
+ * OCSF `ai_agent.type_id` — normalized agent framework.
+ *
+ * Mirrors the enum introduced by OCSF PR #1641 (`objects/ai_agent.json`)
+ * so AITF telemetry maps cleanly onto the upstream OCSF `ai_agent` object.
+ */
+export enum AgentTypeID {
+  UNKNOWN = 0,
+  NATIVE = 1,
+  LANGCHAIN = 2,
+  AUTOGEN = 3,
+  CREWAI = 4,
+  OTHER = 99,
+}
+
+/**
+ * Caption labels for AgentTypeID.
+ *
+ * Matches the `ai_agent.type_id` enum as released in OCSF v1.9.0. Note the
+ * `MCP` and `A2A` members discussed on OCSF PR #1641 did not ship; agentic
+ * protocols are carried by `AgentProtocolID` below instead.
+ */
+export const AGENT_TYPE_LABELS: Record<number, string> = {
+  0: "Unknown",
+  1: "Native",
+  2: "LangChain",
+  3: "AutoGen",
+  4: "CrewAI",
+  99: "Other",
+};
+
+/**
+ * AITF framework value -> OCSF ai_agent.type_id. Frameworks without a
+ * dedicated OCSF enum member (langgraph, semantic_kernel, custom, ...)
+ * normalize to OTHER (99), matching OCSF's open-enum guidance.
+ */
+const FRAMEWORK_TO_TYPE_ID: Record<string, AgentTypeID> = {
+  native: AgentTypeID.NATIVE,
+  langchain: AgentTypeID.LANGCHAIN,
+  langgraph: AgentTypeID.LANGCHAIN,
+  autogen: AgentTypeID.AUTOGEN,
+  crewai: AgentTypeID.CREWAI,
+};
+
+/** Map an AITF framework string to an OCSF `ai_agent.type_id` value. */
+export function normalizeAgentTypeId(framework?: string | null): number {
+  if (!framework) {
+    return AgentTypeID.UNKNOWN;
+  }
+  const key = framework.trim().toLowerCase();
+  return key in FRAMEWORK_TO_TYPE_ID
+    ? FRAMEWORK_TO_TYPE_ID[key]
+    : AgentTypeID.OTHER;
+}
+
+/**
+ * Retired. AITF once proposed a dedicated `ai` category (uid 9) under OCSF
+ * issue #1640; OCSF v1.9.0 ratified the profile-on-existing-classes approach
+ * instead and `categories.json` stops at uid 8. Exported as `null` rather
+ * than deleted so any caller still reading it fails loudly instead of
+ * silently emitting an unratified category.
+ */
+export const OCSF_AI_CATEGORY_UID: number | null = null;
 
 // --- OCSF Base Object Interfaces ---
 
@@ -161,6 +277,143 @@ export interface AISecurityFinding {
   remediation?: string;
 }
 
+/**
+ * OCSF `ai_agent` object — **released in OCSF v1.9.0**.
+ *
+ * All eight fields below are upstream attributes; nothing here is an AITF
+ * extension. An autonomous AI agent operating under delegated authority,
+ * distinct from
+ * the OCSF `agent` object (which models security sensors such as EDR/DLP)
+ * and from human principals. Attached to events via the `ai_operation`
+ * profile so any activity can be attributed to the agent that performed it.
+ */
+export interface OCSFAIAgent {
+  uid: string; // required: stable logical identifier
+  instance_uid?: string; // restart-sensitive running instance id
+  name?: string;
+  type?: string; // caption of type_id (Native, LangChain, ...)
+  type_id: number;
+  ai_model?: string; // model backing the agent at event time
+  version?: string; // agent code/configuration revision
+  charter?: string; // role / operating-boundary reference
+}
+
+/**
+ * OCSF `delegation` object — **released in OCSF v1.9.0**.
+ *
+ * A durable authorization context that persists independently of any single
+ * trace or session. The first four fields are the released upstream
+ * attributes. The rest are an **AITF extension** and are the remaining OCSF
+ * ask: upstream models *that* a delegation exists and who issued it, but not
+ * what authority it conveys. See `upstream-pr-plan-ocsf.md`.
+ */
+export interface OCSFDelegation {
+  // --- released OCSF v1.9.0 attributes ---
+  uid: string; // required: stable delegation identifier
+  created_time?: string; // when the delegation was minted
+  parent_uid?: string; // parent delegation (lineage)
+  issuer_uid?: string; // trusted issuer that minted the delegation
+  // --- AITF extension: pending upstream ---
+  delegator?: string;
+  delegatee?: string;
+  type?: string; // on_behalf_of, token_exchange, capability_grant, ...
+  scope: string[];
+  proof_type?: string; // dpop, mtls_binding, signed_assertion
+  ttl_seconds?: number;
+}
+
+/** A single node in an OCSF `delegation_lineage` graph (OCSF issue #1640). */
+export interface OCSFDelegationNode {
+  uid: string;
+  parent_uid?: string;
+  agent_uid?: string;
+  depth?: number;
+}
+
+/** OCSF `delegation_lineage` — directed graph for ancestry queries. */
+export interface OCSFDelegationLineage {
+  nodes: OCSFDelegationNode[];
+}
+
+/**
+ * Agent-to-agent communication protocol (OCSF `agent_message.protocol_id`).
+ *
+ * One generic discriminator across agentic protocols rather than a dedicated
+ * OCSF object per protocol — protocol-specific detail stays in the
+ * per-protocol OTel namespaces.
+ */
+export enum AgentProtocolID {
+  UNKNOWN = 0,
+  A2A = 1,
+  ACP = 2,
+  ANP = 3,
+  MCP = 4,
+  OTHER = 99,
+}
+
+export const AGENT_PROTOCOL_LABELS: Record<number, string> = {
+  0: "Unknown",
+  1: "A2A",
+  2: "ACP",
+  3: "ANP",
+  4: "MCP",
+  99: "Other",
+};
+
+const PROTOCOL_TO_ID: Record<string, AgentProtocolID> = {
+  a2a: AgentProtocolID.A2A,
+  acp: AgentProtocolID.ACP,
+  anp: AgentProtocolID.ANP,
+  mcp: AgentProtocolID.MCP,
+};
+
+/** Map a protocol string to an OCSF `agent_message.protocol_id`. */
+export function normalizeAgentProtocolId(protocol?: string | null): number {
+  if (!protocol) {
+    return AgentProtocolID.UNKNOWN;
+  }
+  const key = protocol.trim().toLowerCase();
+  return key in PROTOCOL_TO_ID ? PROTOCOL_TO_ID[key] : AgentProtocolID.OTHER;
+}
+
+/**
+ * OCSF `agent_message` object — one generic representation of an
+ * agent-to-agent communication across A2A / ACP / ANP / MCP.
+ *
+ * Carries the wire `protocol_id` discriminator plus the shared core (peer
+ * agents, unit of work + lifecycle status, transport, trust); protocol-specific
+ * extras live in `metadata`.
+ */
+export interface OCSFAgentMessage {
+  protocol_id: number;
+  protocol?: string;
+  protocol_version?: string;
+  direction?: string; // request | response | stream | notification
+  role?: string; // client | server
+  operation?: string;
+  unit_uid?: string;
+  unit_type?: string; // task | run | message
+  status?: string; // canonical lifecycle status
+  previous_status?: string;
+  src_agent?: OCSFAIAgent;
+  dst_agent?: OCSFAIAgent;
+  delegation?: OCSFDelegation;
+  parts_count?: number;
+  part_types: string[];
+  artifacts_count?: number;
+  transport?: string;
+  endpoint?: string;
+  peer_endpoint?: string;
+  trust_domain?: string;
+  peer_trust_domain?: string;
+  cross_domain?: boolean;
+  peer_did?: string;
+  error_code?: string;
+  error_message?: string;
+  duration_ms?: number;
+  metadata?: Record<string, unknown>;
+}
+
 /** Compliance framework mappings. */
 export interface ComplianceMetadata {
   nist_ai_rmf?: Record<string, unknown>;
@@ -175,7 +428,13 @@ export interface ComplianceMetadata {
 
 // --- OCSF Base Event ---
 
-/** Base OCSF event for all AITF Category 7 events. */
+/**
+ * Base OCSF event for AITF AI events.
+ *
+ * Subclasses/factories set `category_uid` and `class_uid` to the OCSF class
+ * they reuse (OCSF PR #1641 / issue #1640). AI-specific context is carried on
+ * the `ai_operation` profile (`ai_agent`, `ai_model`, `delegation`).
+ */
 export interface AIBaseEvent {
   activity_id: number;
   category_uid: number;
@@ -191,6 +450,14 @@ export interface AIBaseEvent {
   compliance?: ComplianceMetadata;
   observables: OCSFObservable[];
   enrichments: OCSFEnrichment[];
+
+  // OCSF `ai_operation` profile (OCSF PR #1641) + delegation context
+  // (OCSF issue #1640). Populated by the crosswalk so every AITF event can
+  // be attributed to the AI agent and delegation that produced it.
+  ai_agent?: OCSFAIAgent;
+  ai_model?: string;
+  delegation?: OCSFDelegation;
+  delegation_lineage?: OCSFDelegationLineage;
 }
 
 // --- Factory Functions ---
@@ -200,11 +467,11 @@ export function createMetadata(
   correlationUid?: string
 ): OCSFMetadata {
   return {
-    version: "1.1.0",
+    version: "1.9.0",
     product: {
       name: "AITF",
       vendor_name: "AITF",
-      version: "1.0.0",
+      version: "0.4.0",
     },
     uid: randomUUID(),
     correlation_uid: correlationUid,
@@ -238,7 +505,9 @@ export function createBaseEvent(
   const activityId = options.activity_id ?? OCSFActivity.OTHER;
   return {
     activity_id: activityId,
-    category_uid: 7, // AI System Activity
+    // Default to APPLICATION (6); factories override with the reused OCSF
+    // category for the class they emit (OCSF PR #1641 / issue #1640).
+    category_uid: options.category_uid ?? OCSFCategoryUID.APPLICATION,
     class_uid: classUid,
     type_uid: options.type_uid ?? classUid * 100 + activityId,
     time: options.time ?? new Date().toISOString(),

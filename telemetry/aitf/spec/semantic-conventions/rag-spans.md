@@ -1,6 +1,6 @@
 # RAG Span Conventions (RAG_CONTEXT)
 
-Status: **Normative** | CoSAI WS2 Alignment: **RAG_CONTEXT** | OCSF Class: **7004 Data Retrieval**
+Status: **Normative** | CoSAI WS2 Alignment: **RAG_CONTEXT** | OCSF Class: **Datastore Activity (6005)** (`ai_operation` profile)
 
 AITF defines semantic conventions for Retrieval-Augmented Generation (RAG) pipelines, covering query processing, vector retrieval, document scoring, reranking, and context quality evaluation. This specification defines the normative field requirements aligned with CoSAI Working Stream 2 (Telemetry for AI) and mapped to applicable compliance and threat frameworks.
 
@@ -159,6 +159,42 @@ Format: `rag.evaluate {rag.pipeline.name}`
 | `rag.quality.faithfulness` | double | **Recommended** | Answer faithfulness to retrieved context (0.0–1.0) | OWASP LLM09 (Misinformation), NIST AI RMF MEASURE-2.5 |
 | `rag.quality.groundedness` | double | **Recommended** | How grounded the answer is in source material (0.0–1.0) | OWASP LLM09, EU AI Act Art.13 |
 
+### Citation & Source Attribution [RFC v0.4 gap closure]
+
+> **RFC field:** Citations / Source Attribution · **Tier:** MUST · **§7 Output Handling, Egress & Refusals** · **Grounding attacks:** `TA-01`, `TA-02`, `IR-03`, `AOC-03`
+
+The quality scores above are model-graded judgements about the answer. They do not record *which sources the answer claimed*, and they cannot be checked against the retrieval that actually happened. A citation the model invented, and a citation the model lifted from injected text inside a retrieved document, both score well on faithfulness while pointing at something the pipeline never returned.
+
+The check that matters is therefore a join: every citation the output asserts is resolved against the document IDs returned by the `rag.retrieve` span in the same trace. Citations that do not resolve are the signal.
+
+| Field Name | Type | Requirement | Description | Compliance |
+|---|---|---|---|---|
+| `rag.citation.count` | int | **Required** | Number of citations asserted in the output | EU AI Act Art.13 (Transparency) |
+| `rag.citation.ids` | string[] | **Required** | Document identifiers the output claims to have drawn on | EU AI Act Art.13, OWASP LLM09 (Misinformation) |
+| `rag.citation.retrieval_span_id` | string | **Required** | Span ID of the `rag.retrieve` these citations are resolved against. Without it the resolution is unverifiable | EU AI Act Art.12 (Record-Keeping) |
+| `rag.citation.resolved_count` | int | **Required** | Citations matching a document actually returned by that retrieval | OWASP LLM09, NIST AI RMF MEASURE-2.5 |
+| `rag.citation.unresolved_count` | int | **Required** | Citations with no matching retrieved document | OWASP LLM09, MITRE ATLAS [AML.T0051](https://atlas.mitre.org/techniques/AML.T0051) |
+| `rag.citation.unresolved_ids` | string[] | **Recommended** | The specific citations that failed to resolve | OWASP LLM09, MITRE ATLAS [AML.T0051](https://atlas.mitre.org/techniques/AML.T0051) |
+| `rag.citation.fabricated` | boolean | **Recommended** | Whether any citation is unresolvable. Convenience flag over `unresolved_count > 0` | OWASP LLM09 (Misinformation) |
+| `rag.citation.sources` | string[] | **Recommended** | Source URLs or file identities as presented to the user, which may differ from the internal document IDs | EU AI Act Art.13 (Transparency) |
+| `rag.citation.coverage_ratio` | double | **Recommended** | Fraction of retrieved documents actually cited (0.0–1.0) | NIST AI RMF MEASURE-2.5 |
+| `rag.citation.uncited_content_ratio` | double | **Recommended** | Fraction of output content carrying no citation. High values with high `faithfulness` indicate the grader saw less of the answer than the user did | OWASP LLM09, NIST AI RMF MEASURE-2.5 |
+| `rag.citation.verified` | boolean | **Recommended** | Whether resolution was performed against logged retrieval rather than asserted by the model. Absent or `false` is self-asserted | EU AI Act Art.12, NIST AI RMF GOVERN-1.2 |
+
+**Emission rule.** These fields describe the *output*, so they belong on `rag.evaluate` or on the `gen_ai.inference` span that produced the answer. They MUST NOT be placed on `rag.retrieve`, which by construction cannot know what the model later claimed. Where evaluation is asynchronous, `rag.citation.retrieval_span_id` is what reconnects the two.
+
+---
+
+## Declared Knowledge-Source Configuration [RFC v0.4 gap closure]
+
+> **RFC field:** Declared Knowledge-Source Configuration · **Tier:** MAY · **§11 Retrieval & Content (RAG)** · **Grounding attacks:** `TA-09`, `IR-03`, `TA-02`
+
+The spans above record retrievals that happened. They give no denominator: a retrieval reaching a collection the agent was never configured to query looks identical to a legitimate one. The declared source set supplies that denominator, and because it is configuration rather than hot-path behaviour it is captured once at agent-registration or index-build time and carried on `asset.*` inventory records, not on every `rag.retrieve` span.
+
+The full field list is in the registry under [`rag.source.*`](attributes-registry.md#ragsource-rfc-v04-gap-closure); it covers declared identity (`name`, `description`, `index.name`, `index.namespace`, `schema`), governance (`owner`, `classification`, `trust_level`, `write_access`, `ingestion.method`), and the declared search contract (`search.top_k`, `search.filters`, `search.scoring`, `search.min_score`, `search.reranker`).
+
+One field does belong on the retrieval span: `rag.source.undeclared_access`, set when the retrieval reached a source outside `rag.source.declared`.
+
 ---
 
 ## CoSAI WS2 Field Mapping
@@ -173,6 +209,8 @@ Cross-reference between CoSAI WS2 `RAG_CONTEXT` field names and AITF attribute k
 | `rag.doc.id` | `rag.doc.id` | New in CoSAI WS2 alignment |
 | `rag.doc.score` | `rag.doc.score` | New in CoSAI WS2 alignment |
 | `rag.doc.provenance` | `rag.doc.provenance` | New in CoSAI WS2 alignment |
+| — | `rag.citation.*` | New in RFC v0.4 gap closure; no CoSAI WS2 counterpart yet |
+| — | `rag.source.*` | New in RFC v0.4 gap closure; declared configuration, no CoSAI WS2 counterpart yet |
 
 ---
 
@@ -216,4 +254,14 @@ Span: rag.pipeline knowledge-base
        rag.quality.answer_relevance: 0.88
        rag.quality.faithfulness: 0.95
        rag.quality.groundedness: 0.93
+       rag.citation.count: 3
+       rag.citation.ids: ["doc-001", "doc-002", "doc-417"]
+       rag.citation.retrieval_span_id: "a3f1c09b4e2d7856"
+       rag.citation.resolved_count: 2
+       rag.citation.unresolved_count: 1
+       rag.citation.unresolved_ids: ["doc-417"]
+       rag.citation.fabricated: true
+       rag.citation.verified: true
 ```
+
+Note the shape of the finding in that example. Every quality score is high — the grader is satisfied the answer follows from the context it was shown. But `doc-417` was never returned by the `rag.retrieve` span, so the answer cites a source the pipeline did not supply. The quality scores alone would not have surfaced this; only the resolution against `rag.citation.retrieval_span_id` does.

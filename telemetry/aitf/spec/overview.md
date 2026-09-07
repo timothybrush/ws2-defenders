@@ -1,8 +1,8 @@
 # AITF Specification Overview
 
-**Version:** 1.0.0-draft
+**Version:** 0.4 — Proposal
 **Status:** Draft
-**Date:** 2026-02-15
+**Date:** 2026-09-05
 
 ## 1. Introduction
 
@@ -116,7 +116,7 @@ ingestion. A single instrumentation pass feeds both pipelines.
 | Pipeline | Format | Purpose | Backends |
 |----------|--------|---------|----------|
 | **OTLP** | OTLP (gRPC/HTTP) | Distributed tracing, security analytics, latency analysis, dependency maps | Jaeger, Grafana Tempo, Datadog, Elastic Security, Honeycomb, Dynatrace, New Relic |
-| **OCSF** | OCSF Category 7 (JSON) | OCSF-normalized security events, compliance, threat detection | Splunk, AWS Security Lake, QRadar, Sentinel |
+| **OCSF** | OCSF (JSON, reused classes + `ai_operation` profile) | OCSF-normalized security events, compliance, threat detection | Splunk, AWS Security Lake, QRadar, Sentinel |
 | **CEF/Syslog** | CEF over Syslog | Legacy SIEM integration | ArcSight, LogRhythm, QRadar |
 | **Audit** | Hash-chained JSONL | Tamper-evident audit trail | File-based, S3, compliance archives |
 
@@ -126,7 +126,7 @@ ingestion. A single instrumentation pass feeds both pipelines.
 2. **Shared TracerProvider** — One `TracerProvider` with multiple `SpanProcessor` pipelines attached
 3. **Parallel export** — Each span is delivered to all configured exporters simultaneously:
    - **OTLP exporter** sends the security-enriched OTel span (including `security.*` attributes) to OTLP-compatible backends for both observability and security analytics
-   - **OCSF exporter** normalizes the span into an OCSF Category 7 event for SIEMs that require OCSF-native ingestion
+   - **OCSF exporter** normalizes the span into an OCSF event under a reused existing class (API Activity, Datastore Activity, Findings, IAM, Discovery) enriched with the `ai_operation` profile (OCSF v1.9.0) — including agent, delegation and agent-to-agent lifecycle, which reuse API Activity and Authorize Session — for SIEMs that require OCSF-native ingestion
    - **CEF/Immutable exporters** convert to additional formats as needed
 
 ```
@@ -273,13 +273,13 @@ AITF defines a clear span hierarchy for AI operations:
 
 ## 5. OCSF Integration
 
-OCSF (Open Cybersecurity Schema Framework) provides an additional schema normalization layer in AITF's dual-pipeline architecture.  While OTLP carries security-enriched spans (including `security.*` attributes) directly to OTLP-compatible backends for both observability and security analytics, the OCSF pipeline normalizes those same spans into OCSF Category 7 events for SIEMs and data lakes that require OCSF-native ingestion (Splunk, AWS Security Lake, QRadar, Sentinel).
+OCSF (Open Cybersecurity Schema Framework) provides an additional schema normalization layer in AITF's dual-pipeline architecture.  While OTLP carries security-enriched spans (including `security.*` attributes) directly to OTLP-compatible backends for both observability and security analytics, the OCSF pipeline normalizes those same spans into OCSF events emitted under reused existing classes (API Activity, Datastore Activity, Findings, IAM, Discovery) enriched with the `ai_operation` profile released in OCSF v1.9.0 — agent, delegation and agent-to-agent lifecycle events reuse released classes too (API Activity 6003 and Authorize Session 3003) rather than a bespoke AI category — for SIEMs and data lakes that require OCSF-native ingestion (Splunk, AWS Security Lake, QRadar, Sentinel).
 
 Both pipelines consume the same OTel spans produced by AITF instrumentors — there is no separate instrumentation step for OCSF.
 
-### 5.1 OCSF Category 7: AI Events
+### 5.1 OCSF AI Events
 
-AITF defines a new OCSF category (Category 7) for AI-specific security events. Each AITF span can be mapped to an OCSF event for consumption by SIEM/XDR platforms.
+AITF reuses existing OCSF classes for AI-specific security events, enriching them with the `ai_operation` profile released in OCSF **v1.9.0**; agent, delegation and agent-to-agent lifecycle events reuse released classes as well (API Activity `6003`, Authorize Session `3003`). AITF defines no category or class of its own. Each AITF span can be mapped to an OCSF event for consumption by SIEM/XDR platforms.
 
 See [OCSF Event Classes](ocsf-mapping/event-classes.md) for detailed class definitions.
 
@@ -369,7 +369,14 @@ Current status:
 - [Identity Spans](semantic-conventions/identity-spans.md)
 - [Asset Inventory Spans](semantic-conventions/asset-inventory-spans.md)
 - [Drift Detection Spans](semantic-conventions/drift-detection-spans.md)
+- [A2A Spans](semantic-conventions/a2a-spans.md)
+- [RAG Spans](semantic-conventions/rag-spans.md)
+- [Cross-Cutting Security & Observability-Plane Conventions](semantic-conventions/security-cross-cutting.md)
 - [Metrics](semantic-conventions/metrics.md)
 - [Events](semantic-conventions/events.md)
 - [OCSF Event Classes](ocsf-mapping/event-classes.md)
 - [Compliance Mapping](ocsf-mapping/compliance-mapping.md)
+- [RFC v0.4 Appendix C Resolution Log](../AITF_gaps.md)
+- [Upstream Status: OpenTelemetry & OCSF](../upstream-status.md)
+- [Upstream PR Plan: OpenTelemetry](../upstream-pr-plan-opentelemetry.md)
+- [Upstream PR Plan: OCSF](../upstream-pr-plan-ocsf.md)

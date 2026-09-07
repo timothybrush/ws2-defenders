@@ -1,6 +1,6 @@
 """AITF OCSF Exporter.
 
-OTel SpanExporter that converts AI spans to OCSF Category 7 events
+OTel SpanExporter that converts AI spans to OCSF events (class-reuse model)
 and exports them to SIEM/XDR endpoints, S3, or local files.
 
 Based on forwarder architecture from the AITelemetry project.
@@ -82,7 +82,7 @@ def _validate_output_path(output_file: str) -> Path:
 
 
 class OCSFExporter(SpanExporter):
-    """Exports OTel spans as OCSF Category 7 AI events.
+    """Exports OTel spans as OCSF AI events (class-reuse model).
 
     Converts AI-related spans to OCSF events using OCSFMapper,
     enriches with compliance metadata, and exports to configured
@@ -211,19 +211,41 @@ class OCSFExporter(SpanExporter):
             raise
 
     def _classify_event(self, event: AIBaseEvent) -> str | None:
-        """Classify an OCSF event for compliance mapping."""
-        class_uid = event.class_uid
-        mapping = {
-            7001: "model_inference",
-            7002: "agent_activity",
-            7003: "tool_execution",
-            7004: "data_retrieval",
-            7005: "security_finding",
-            7006: "supply_chain",
-            7007: "governance",
-            7008: "identity",
-        }
-        return mapping.get(class_uid)
+        """Classify an OCSF event for compliance mapping.
+
+        AITF reuses existing OCSF classes (OCSF PR #1641 / issue #1640), so
+        ``class_uid`` is no longer unique per AI event type (e.g. inference and
+        tool execution both reuse API Activity 6003). Classify by event type.
+        """
+        from aitf.ocsf.event_classes import (
+            AIAgentActivityEvent,
+            AIAssetInventoryEvent,
+            AIDataRetrievalEvent,
+            AIGovernanceEvent,
+            AIIdentityEvent,
+            AIModelInferenceEvent,
+            AIModelOpsEvent,
+            AISecurityFindingEvent,
+            AISupplyChainEvent,
+            AIToolExecutionEvent,
+        )
+
+        type_map = [
+            (AIModelInferenceEvent, "model_inference"),
+            (AIAgentActivityEvent, "agent_activity"),
+            (AIToolExecutionEvent, "tool_execution"),
+            (AIDataRetrievalEvent, "data_retrieval"),
+            (AISecurityFindingEvent, "security_finding"),
+            (AISupplyChainEvent, "supply_chain"),
+            (AIGovernanceEvent, "governance"),
+            (AIIdentityEvent, "identity"),
+            (AIModelOpsEvent, "model_ops"),
+            (AIAssetInventoryEvent, "asset_inventory"),
+        ]
+        for cls, name in type_map:
+            if isinstance(event, cls):
+                return name
+        return None
 
     @property
     def event_count(self) -> int:

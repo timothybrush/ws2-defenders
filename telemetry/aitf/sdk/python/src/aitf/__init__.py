@@ -7,7 +7,7 @@ spans flow simultaneously to OTel backends (via OTLP) and SIEM/XDR
 instrumentation.
 """
 
-__version__ = "1.0.0"
+__version__ = "0.4.0"
 
 from aitf.instrumentation import AITFInstrumentor
 from aitf.generators import AIBOMGenerator

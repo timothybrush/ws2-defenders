@@ -13,6 +13,24 @@ const (
 	GenAISystemKey        = attribute.Key("gen_ai.provider.name")
 	GenAIOperationNameKey = attribute.Key("gen_ai.operation.name")
 
+	// Prompt management
+	GenAIPromptVersionKey = attribute.Key("gen_ai.prompt.version")
+	GenAIPromptLabelKey   = attribute.Key("gen_ai.prompt.label")
+
+	// End-user / tagging (general; e.g. Langfuse userId / tags)
+	UserIDKey = attribute.Key("user.id")
+	TagsKey   = attribute.Key("tags")
+
+	// Evaluation
+	GenAIEvaluationNameKey          = attribute.Key("gen_ai.evaluation.name")
+	GenAIEvaluationScoreValueKey    = attribute.Key("gen_ai.evaluation.score.value")
+	GenAIEvaluationScoreLabelKey    = attribute.Key("gen_ai.evaluation.score.label")
+	GenAIEvaluationExplanationKey   = attribute.Key("gen_ai.evaluation.explanation")
+	GenAIEvaluationScoreDataTypeKey = attribute.Key("gen_ai.evaluation.score.data_type")
+	GenAIEvaluationSourceKey        = attribute.Key("gen_ai.evaluation.source")
+	GenAIEvaluationCommentKey       = attribute.Key("gen_ai.evaluation.comment")
+	GenAIEvaluationDatasetItemIDKey = attribute.Key("gen_ai.evaluation.dataset.item_id")
+
 	// Request
 	GenAIRequestModelKey            = attribute.Key("gen_ai.request.model")
 	GenAIRequestMaxTokensKey        = attribute.Key("gen_ai.request.max_tokens")
@@ -818,6 +836,99 @@ const (
 	ACPRunModeStream = "stream"
 )
 
+// --- AITF ANP (Agent Network Protocol) Attributes ---
+//
+// ANP is a decentralized, DID-based agent-to-agent protocol with meta-protocol
+// negotiation and encrypted peer channels. https://agentnetworkprotocol.com
+const (
+	ANPProtocolVersionKey = attribute.Key("anp.protocol.version")
+	ANPTransportKey       = attribute.Key("anp.transport") // http, ws
+
+	// DID identity
+	ANPDIDKey     = attribute.Key("anp.did")      // this agent's DID
+	ANPPeerDIDKey = attribute.Key("anp.peer.did") // peer agent's DID
+
+	// Meta-protocol negotiation
+	ANPMetaProtocolNameKey       = attribute.Key("anp.meta_protocol.name")
+	ANPMetaProtocolVersionKey    = attribute.Key("anp.meta_protocol.version")
+	ANPMetaProtocolNegotiatedKey = attribute.Key("anp.meta_protocol.negotiated")
+
+	// Message
+	ANPMessageIDKey         = attribute.Key("anp.message.id")
+	ANPMessageTypeKey       = attribute.Key("anp.message.type")
+	ANPMessageRoleKey       = attribute.Key("anp.message.role")
+	ANPMessagePartsCountKey = attribute.Key("anp.message.parts_count")
+
+	// Encrypted channel
+	ANPEncryptedKey  = attribute.Key("anp.encrypted")
+	ANPEncryptionKey = attribute.Key("anp.encryption") // e.g. ecdhe
+
+	// Trust / domains
+	ANPTrustDomainKey     = attribute.Key("anp.trust.domain")
+	ANPPeerTrustDomainKey = attribute.Key("anp.trust.peer_domain")
+	ANPCrossDomainKey     = attribute.Key("anp.trust.cross_domain")
+
+	// Errors
+	ANPErrorCodeKey    = attribute.Key("anp.error.code")
+	ANPErrorMessageKey = attribute.Key("anp.error.message")
+)
+
+// --- AITF Canonical Agent Communication Attributes ---
+//
+// A single, protocol-agnostic namespace that A2A / ACP / ANP (and future
+// agentic protocols) normalize onto. The protocol discriminator carries the
+// wire protocol; protocol-specific detail stays in the per-protocol namespaces
+// (a2a.* / acp.* / anp.*). This is the AITF analogue of OCSF's "one generic
+// class + protocol id" pattern and the source for the OCSF agent_message object.
+const (
+	AgentCommProtocolKey        = attribute.Key("agent.comm.protocol") // a2a | acp | anp | mcp | custom
+	AgentCommProtocolVersionKey = attribute.Key("agent.comm.protocol_version")
+	AgentCommDirectionKey       = attribute.Key("agent.comm.direction") // request | response | stream | notification
+	AgentCommRoleKey            = attribute.Key("agent.comm.role")      // client | server
+	AgentCommOperationKey       = attribute.Key("agent.comm.operation")
+	AgentCommUnitIDKey          = attribute.Key("agent.comm.unit_id")   // normalized task/run/message id
+	AgentCommUnitTypeKey        = attribute.Key("agent.comm.unit_type") // task | run | message
+	AgentCommStatusKey          = attribute.Key("agent.comm.status")    // canonical lifecycle status
+	AgentCommPreviousStatusKey  = attribute.Key("agent.comm.previous_status")
+	AgentCommSrcAgentIDKey      = attribute.Key("agent.comm.src_agent_id")
+	AgentCommSrcAgentNameKey    = attribute.Key("agent.comm.src_agent_name")
+	AgentCommPeerAgentIDKey     = attribute.Key("agent.comm.peer_agent_id")
+	AgentCommPeerAgentNameKey   = attribute.Key("agent.comm.peer_agent_name")
+	AgentCommPeerDIDKey         = attribute.Key("agent.comm.peer_did")
+	AgentCommPartsCountKey      = attribute.Key("agent.comm.parts_count")
+	AgentCommPartTypesKey       = attribute.Key("agent.comm.part_types")
+	AgentCommArtifactsCountKey  = attribute.Key("agent.comm.artifacts_count")
+	AgentCommTransportKey       = attribute.Key("agent.comm.transport")
+	AgentCommEndpointKey        = attribute.Key("agent.comm.endpoint")
+	AgentCommPeerEndpointKey    = attribute.Key("agent.comm.peer_endpoint")
+	AgentCommTrustDomainKey     = attribute.Key("agent.comm.trust_domain")
+	AgentCommPeerTrustDomainKey = attribute.Key("agent.comm.peer_trust_domain")
+	AgentCommCrossDomainKey     = attribute.Key("agent.comm.cross_domain")
+	AgentCommErrorCodeKey       = attribute.Key("agent.comm.error_code")
+	AgentCommErrorMessageKey    = attribute.Key("agent.comm.error_message")
+	AgentCommDurationMsKey      = attribute.Key("agent.comm.duration_ms")
+)
+
+// Canonical agent-communication lifecycle status values.
+const (
+	AgentCommStatusSubmitted     = "submitted"
+	AgentCommStatusWorking       = "working"
+	AgentCommStatusInputRequired = "input_required"
+	AgentCommStatusCompleted     = "completed"
+	AgentCommStatusFailed        = "failed"
+	AgentCommStatusCanceling     = "canceling"
+	AgentCommStatusCanceled      = "canceled"
+)
+
+// Canonical agent-communication protocol values.
+const (
+	AgentCommProtocolA2A    = "a2a"
+	AgentCommProtocolACP    = "acp"
+	AgentCommProtocolANP    = "anp"
+	AgentCommProtocolMCP    = "mcp"
+	AgentCommProtocolCustom = "custom"
+)
+
 // --- AITF Agentic Log Attributes (Table 10.1 minimal fields) ---
 
 const (
@@ -874,4 +985,758 @@ const (
 	AgenticLogPolicyFail = "FAIL"
 	AgenticLogPolicyWarn = "WARN"
 	AgenticLogPolicySkip = "SKIP"
+)
+
+// --- Anthropic Claude Compliance API (Activity Feed) Attributes ---
+//
+// Normalizes records from GET /v1/compliance/activities so Claude Enterprise
+// audit activity can be carried as AITF telemetry and mapped to OCSF.
+// See https://platform.claude.com/docs/en/manage-claude/compliance-api
+const (
+	// Activity envelope
+	ClaudeComplianceActivityID       = "claude.compliance.activity.id"
+	ClaudeComplianceActivityType     = "claude.compliance.activity.type"
+	ClaudeComplianceActivityCategory = "claude.compliance.activity.category" // derived: auth/account/content/...
+	ClaudeComplianceCreatedAt        = "claude.compliance.activity.created_at"
+	ClaudeComplianceOrganizationID   = "claude.compliance.organization.id"
+	ClaudeComplianceOrganizationUUID = "claude.compliance.organization.uuid"
+
+	// Actor (discriminated union)
+	ClaudeComplianceActorType            = "claude.compliance.actor.type" // user_actor, api_actor, admin_api_key_actor, ...
+	ClaudeComplianceActorEmail           = "claude.compliance.actor.email_address"
+	ClaudeComplianceActorUserID          = "claude.compliance.actor.user_id"
+	ClaudeComplianceActorIP              = "claude.compliance.actor.ip_address"
+	ClaudeComplianceActorUserAgent       = "claude.compliance.actor.user_agent"
+	ClaudeComplianceActorAPIKeyID        = "claude.compliance.actor.api_key_id"
+	ClaudeComplianceActorAdminAPIKeyID   = "claude.compliance.actor.admin_api_key_id"
+	ClaudeComplianceActorDirectoryID     = "claude.compliance.actor.directory_id"
+	ClaudeComplianceActorIdpConnectionType = "claude.compliance.actor.idp_connection_type"
+
+	// Type-specific resource identifiers
+	ClaudeComplianceChatID       = "claude.compliance.chat.id"
+	ClaudeComplianceProjectID    = "claude.compliance.project.id"
+	ClaudeComplianceFileID       = "claude.compliance.file.id"
+	ClaudeComplianceFilename     = "claude.compliance.file.name"
+	ClaudeComplianceTargetUserID = "claude.compliance.target.user_id"
+)
+
+// ===========================================================================
+// RFC v0.4 gap closure
+//
+// Attributes added to close the 27 Appendix C gaps against CoSAI RFC v0.4.
+// Mirrors sdk/python/src/aitf/semantic_conventions/attributes.py.
+// ===========================================================================
+
+// --- GenAIAttributes [RFC v0.4 gap closure] ---
+
+// Identifier hierarchy [RFC v0.4 gap closure]
+const (
+	GenAITurnIDKey       = attribute.Key("gen_ai.turn.id")
+	GenAITurnIndexKey    = attribute.Key("gen_ai.turn.index")
+	GenAITurnParentIDKey = attribute.Key("gen_ai.turn.parent_id")
+	GenAIStepIDKey       = attribute.Key("gen_ai.step.id")
+	GenAIStepParentIDKey = attribute.Key("gen_ai.step.parent_id")
+	GenAIRunIDKey        = attribute.Key("gen_ai.run.id")
+)
+
+// Trigger provenance [RFC v0.4 gap closure]
+const (
+	GenAITriggerTypeKey            = attribute.Key("gen_ai.trigger.type")
+	GenAITriggerEventKey           = attribute.Key("gen_ai.trigger.event")
+	GenAITriggerEventIDKey         = attribute.Key("gen_ai.trigger.event.id")
+	GenAITriggerSourceKey          = attribute.Key("gen_ai.trigger.source")
+	GenAITriggerSourcePrincipalKey = attribute.Key("gen_ai.trigger.source.principal")
+	GenAITriggerReceivedAtKey      = attribute.Key("gen_ai.trigger.received_at")
+	GenAITriggerHumanInLoopKey     = attribute.Key("gen_ai.trigger.human_in_loop")
+)
+
+// Content modality & attachment identity [RFC v0.4 gap closure]
+const (
+	GenAIContentPartIndexKey                   = attribute.Key("gen_ai.content.part.index")
+	GenAIContentPartTypeKey                    = attribute.Key("gen_ai.content.part.type")
+	GenAIContentPartMimeTypeKey                = attribute.Key("gen_ai.content.part.mime_type")
+	GenAIContentPartSizeBytesKey               = attribute.Key("gen_ai.content.part.size_bytes")
+	GenAIContentPartHashKey                    = attribute.Key("gen_ai.content.part.hash")
+	GenAIContentModalitiesKey                  = attribute.Key("gen_ai.content.modalities")
+	GenAIContentAttachmentCountKey             = attribute.Key("gen_ai.content.attachment.count")
+	GenAIContentAttachmentNameKey              = attribute.Key("gen_ai.content.attachment.name")
+	GenAIContentAttachmentHashKey              = attribute.Key("gen_ai.content.attachment.hash")
+	GenAIContentAttachmentSizeBytesKey         = attribute.Key("gen_ai.content.attachment.size_bytes")
+	GenAIContentAttachmentSourceKey            = attribute.Key("gen_ai.content.attachment.source")
+	GenAIContentAttachmentExtractedTextHashKey = attribute.Key("gen_ai.content.attachment.extracted_text_hash")
+	GenAIContentTotalSizeBytesKey              = attribute.Key("gen_ai.content.total_size_bytes")
+)
+
+// Backend / route restriction decision [RFC v0.4 gap closure]
+const (
+	GenAIRouteCandidatesKey        = attribute.Key("gen_ai.route.candidates")
+	GenAIRouteCandidatesCountKey   = attribute.Key("gen_ai.route.candidates.count")
+	GenAIRouteSelectedKey          = attribute.Key("gen_ai.route.selected")
+	GenAIRouteDecisionKey          = attribute.Key("gen_ai.route.decision")
+	GenAIRouteConstraintTypeKey    = attribute.Key("gen_ai.route.constraint.type")
+	GenAIRouteConstraintValueKey   = attribute.Key("gen_ai.route.constraint.value")
+	GenAIRouteConstraintSourceKey  = attribute.Key("gen_ai.route.constraint.source")
+	GenAIRouteExcludedKey          = attribute.Key("gen_ai.route.excluded")
+	GenAIRouteNoCandidateActionKey = attribute.Key("gen_ai.route.no_candidate_action")
+	GenAIRoutePolicyIDKey          = attribute.Key("gen_ai.route.policy_id")
+)
+
+// Organization / tenant ID [RFC v0.4 gap closure]
+const (
+	GenAIConversationTenantIDKey = attribute.Key("gen_ai.conversation.tenant.id")
+	GenAIUserTenantIDKey         = attribute.Key("user.tenant.id")
+)
+
+// Values for gen_ai.trigger.type (RFC v0.4 gap closure).
+const (
+	GenAITriggertypeUserInitiated  = "user_initiated"
+	GenAITriggertypeScheduled      = "scheduled"
+	GenAITriggertypeWebhook        = "webhook"
+	GenAITriggertypeEventDriven    = "event_driven"
+	GenAITriggertypeAgentInitiated = "agent_initiated"
+	GenAITriggertypeSystem         = "system"
+	GenAITriggertypeRetry          = "retry"
+	GenAITriggertypeUnknown        = "unknown"
+)
+
+// Values for gen_ai.route.decision (RFC v0.4 gap closure).
+const (
+	GenAIRoutedecisionAllowed    = "allowed"
+	GenAIRoutedecisionRestricted = "restricted"
+	GenAIRoutedecisionDenied     = "denied"
+	GenAIRoutedecisionFallback   = "fallback"
+	GenAIRoutedecisionNoPolicy   = "no_policy"
+)
+
+// --- AgentAttributes [RFC v0.4 gap closure] ---
+
+// Peer agent card / descriptor [RFC v0.4 gap closure]
+const (
+	AgentPeerIDKey                    = attribute.Key("gen_ai.agent.peer.id")
+	AgentPeerNameKey                  = attribute.Key("gen_ai.agent.peer.name")
+	AgentPeerURLKey                   = attribute.Key("gen_ai.agent.peer.url")
+	AgentPeerVersionKey               = attribute.Key("gen_ai.agent.peer.version")
+	AgentPeerProviderKey              = attribute.Key("gen_ai.agent.peer.provider")
+	AgentPeerSkillsKey                = attribute.Key("gen_ai.agent.peer.skills")
+	AgentPeerProtocolKey              = attribute.Key("gen_ai.agent.peer.protocol")
+	AgentPeerCardHashKey              = attribute.Key("gen_ai.agent.peer.card.hash")
+	AgentPeerCardBaselineHashKey      = attribute.Key("gen_ai.agent.peer.card.baseline_hash")
+	AgentPeerCardChangedKey           = attribute.Key("gen_ai.agent.peer.card.changed")
+	AgentPeerCardChangeFieldsKey      = attribute.Key("gen_ai.agent.peer.card.change_fields")
+	AgentPeerCardFirstSeenKey         = attribute.Key("gen_ai.agent.peer.card.first_seen")
+	AgentPeerVerificationMethodKey    = attribute.Key("gen_ai.agent.peer.verification.method")
+	AgentPeerVerificationResultKey    = attribute.Key("gen_ai.agent.peer.verification.result")
+	AgentPeerVerificationAuthorityKey = attribute.Key("gen_ai.agent.peer.verification.authority")
+	AgentPeerApprovedKey              = attribute.Key("gen_ai.agent.peer.approved")
+)
+
+// Organization / tenant ID [RFC v0.4 gap closure]
+const (
+	AgentTenantIDKey = attribute.Key("gen_ai.agent.tenant.id")
+)
+
+// Values for gen_ai.agent.peer.verification.result (RFC v0.4 gap closure).
+const (
+	AgentPeerverificationresultVerified     = "verified"
+	AgentPeerverificationresultUnverified   = "unverified"
+	AgentPeerverificationresultFailed       = "failed"
+	AgentPeerverificationresultRefused      = "refused"
+	AgentPeerverificationresultNotAttempted = "not_attempted"
+)
+
+// --- MCPAttributes [RFC v0.4 gap closure] ---
+
+// Tool definition digest [RFC v0.4 gap closure]
+const (
+	MCPToolDefinitionHashKey            = attribute.Key("mcp.tool.definition.hash")
+	MCPToolDefinitionBaselineHashKey    = attribute.Key("mcp.tool.definition.baseline_hash")
+	MCPToolDefinitionChangedKey         = attribute.Key("mcp.tool.definition.changed")
+	MCPToolDefinitionChangeTypeKey      = attribute.Key("mcp.tool.definition.change_type")
+	MCPToolDefinitionDescriptionHashKey = attribute.Key("mcp.tool.definition.description_hash")
+	MCPToolDefinitionSchemaHashKey      = attribute.Key("mcp.tool.definition.schema_hash")
+	MCPToolDefinitionApprovedKey        = attribute.Key("mcp.tool.definition.approved")
+	MCPToolDefinitionApprovedAtKey      = attribute.Key("mcp.tool.definition.approved_at")
+	MCPToolDefinitionFirstSeenKey       = attribute.Key("mcp.tool.definition.first_seen")
+	MCPToolDefinitionSourceKey          = attribute.Key("mcp.tool.definition.source")
+)
+
+// Server identity & primitive [RFC v0.4 gap closure]
+const (
+	MCPPrimitiveKey              = attribute.Key("mcp.primitive")
+	MCPMethodNameKey             = attribute.Key("mcp.method.name")
+	MCPRequestIDKey              = attribute.Key("mcp.request.id")
+	MCPSessionIDKey              = attribute.Key("mcp.session.id")
+	MCPServerInstanceIDKey       = attribute.Key("mcp.server.instance.id")
+	MCPServerIdentityMethodKey   = attribute.Key("mcp.server.identity.method")
+	MCPServerIdentityVerifiedKey = attribute.Key("mcp.server.identity.verified")
+	MCPServerTrustDomainKey      = attribute.Key("mcp.server.trust_domain")
+	MCPServerCommandKey          = attribute.Key("mcp.server.command")
+	MCPServerBinaryHashKey       = attribute.Key("mcp.server.binary.hash")
+	MCPCapabilitiesNegotiatedKey = attribute.Key("mcp.capabilities.negotiated")
+)
+
+// Protocol envelope capture [RFC v0.4 gap closure]
+const (
+	MCPEnvelopeCapturedKey       = attribute.Key("mcp.envelope.captured")
+	MCPEnvelopeRequestKey        = attribute.Key("mcp.envelope.request")
+	MCPEnvelopeResponseKey       = attribute.Key("mcp.envelope.response")
+	MCPEnvelopeRequestHashKey    = attribute.Key("mcp.envelope.request.hash")
+	MCPEnvelopeResponseHashKey   = attribute.Key("mcp.envelope.response.hash")
+	MCPEnvelopeSizeBytesKey      = attribute.Key("mcp.envelope.size_bytes")
+	MCPEnvelopeTruncatedKey      = attribute.Key("mcp.envelope.truncated")
+	MCPEnvelopeRedactedKey       = attribute.Key("mcp.envelope.redacted")
+	MCPEnvelopeJsonrpcVersionKey = attribute.Key("mcp.envelope.jsonrpc.version")
+	MCPEnvelopeErrorCodeKey      = attribute.Key("mcp.envelope.error.code")
+	MCPEnvelopeErrorMessageKey   = attribute.Key("mcp.envelope.error.message")
+)
+
+// Values for mcp.primitive (RFC v0.4 gap closure).
+const (
+	MCPPrimitiveTool        = "tool"
+	MCPPrimitiveResource    = "resource"
+	MCPPrimitivePrompt      = "prompt"
+	MCPPrimitiveSampling    = "sampling"
+	MCPPrimitiveCompletion  = "completion"
+	MCPPrimitiveElicitation = "elicitation"
+	MCPPrimitiveRoot        = "root"
+	MCPPrimitiveLogging     = "logging"
+)
+
+// --- RAGAttributes [RFC v0.4 gap closure] ---
+
+// Citations / source attribution [RFC v0.4 gap closure]
+const (
+	RAGCitationCountKey               = attribute.Key("rag.citation.count")
+	RAGCitationIDSKey                 = attribute.Key("rag.citation.ids")
+	RAGCitationSourcesKey             = attribute.Key("rag.citation.sources")
+	RAGCitationResolvedCountKey       = attribute.Key("rag.citation.resolved_count")
+	RAGCitationUnresolvedCountKey     = attribute.Key("rag.citation.unresolved_count")
+	RAGCitationUnresolvedIDSKey       = attribute.Key("rag.citation.unresolved_ids")
+	RAGCitationFabricatedKey          = attribute.Key("rag.citation.fabricated")
+	RAGCitationRetrievalSpanIDKey     = attribute.Key("rag.citation.retrieval_span_id")
+	RAGCitationCoverageRatioKey       = attribute.Key("rag.citation.coverage_ratio")
+	RAGCitationUncitedContentRatioKey = attribute.Key("rag.citation.uncited_content_ratio")
+	RAGCitationFormatKey              = attribute.Key("rag.citation.format")
+	RAGCitationVerifiedKey            = attribute.Key("rag.citation.verified")
+)
+
+// Declared knowledge-source configuration [RFC v0.4 gap closure]
+const (
+	RAGSourceDeclaredKey         = attribute.Key("rag.source.declared")
+	RAGSourceDeclaredCountKey    = attribute.Key("rag.source.declared_count")
+	RAGSourceNameKey             = attribute.Key("rag.source.name")
+	RAGSourceDescriptionKey      = attribute.Key("rag.source.description")
+	RAGSourceTypeKey             = attribute.Key("rag.source.type")
+	RAGSourceIndexNameKey        = attribute.Key("rag.source.index.name")
+	RAGSourceIndexNamespaceKey   = attribute.Key("rag.source.index.namespace")
+	RAGSourceSchemaKey           = attribute.Key("rag.source.schema")
+	RAGSourceSchemaHashKey       = attribute.Key("rag.source.schema.hash")
+	RAGSourceTrustLevelKey       = attribute.Key("rag.source.trust_level")
+	RAGSourceClassificationKey   = attribute.Key("rag.source.classification")
+	RAGSourceOwnerKey            = attribute.Key("rag.source.owner")
+	RAGSourceWriteAccessKey      = attribute.Key("rag.source.write_access")
+	RAGSourceIngestionMethodKey  = attribute.Key("rag.source.ingestion.method")
+	RAGSourceLastIndexedKey      = attribute.Key("rag.source.last_indexed")
+	RAGSourceIndexHashKey        = attribute.Key("rag.source.index.hash")
+	RAGSourceSearchTopKKey       = attribute.Key("rag.source.search.top_k")
+	RAGSourceSearchFiltersKey    = attribute.Key("rag.source.search.filters")
+	RAGSourceSearchScoringKey    = attribute.Key("rag.source.search.scoring")
+	RAGSourceSearchMinScoreKey   = attribute.Key("rag.source.search.min_score")
+	RAGSourceSearchRerankerKey   = attribute.Key("rag.source.search.reranker")
+	RAGSourceUndeclaredAccessKey = attribute.Key("rag.source.undeclared_access")
+)
+
+// Organization / tenant ID [RFC v0.4 gap closure]
+const (
+	RAGDataSourceTenantIDKey = attribute.Key("gen_ai.data_source.tenant.id")
+)
+
+// --- SecurityAttributes [RFC v0.4 gap closure] ---
+
+// Guardrail modification record [RFC v0.4 gap closure]
+const (
+	SecurityGuardrailActionKey                       = attribute.Key("security.guardrail.action")
+	SecurityGuardrailModifiedKey                     = attribute.Key("security.guardrail.modified")
+	SecurityGuardrailModificationTypeKey             = attribute.Key("security.guardrail.modification.type")
+	SecurityGuardrailModificationSideKey             = attribute.Key("security.guardrail.modification.side")
+	SecurityGuardrailModificationEnforcementPointKey = attribute.Key("security.guardrail.modification.enforcement_point")
+	SecurityGuardrailModificationHashBeforeKey       = attribute.Key("security.guardrail.modification.hash_before")
+	SecurityGuardrailModificationHashAfterKey        = attribute.Key("security.guardrail.modification.hash_after")
+	SecurityGuardrailModificationCountKey            = attribute.Key("security.guardrail.modification.count")
+	SecurityGuardrailModificationBytesRemovedKey     = attribute.Key("security.guardrail.modification.bytes_removed")
+	SecurityGuardrailModificationRedactionMapKey     = attribute.Key("security.guardrail.modification.redaction_map")
+	SecurityGuardrailModificationReasonKey           = attribute.Key("security.guardrail.modification.reason")
+)
+
+// Encoded / obfuscated payload indicator [RFC v0.4 gap closure]
+const (
+	SecurityObfuscationDetectedKey             = attribute.Key("security.obfuscation.detected")
+	SecurityObfuscationEncodingsKey            = attribute.Key("security.obfuscation.encodings")
+	SecurityObfuscationDepthKey                = attribute.Key("security.obfuscation.depth")
+	SecurityObfuscationDecodedFormKey          = attribute.Key("security.obfuscation.decoded_form")
+	SecurityObfuscationDecodedHashKey          = attribute.Key("security.obfuscation.decoded_hash")
+	SecurityObfuscationDecodedLengthKey        = attribute.Key("security.obfuscation.decoded_length")
+	SecurityObfuscationSourceFieldKey          = attribute.Key("security.obfuscation.source_field")
+	SecurityObfuscationInspectedAfterDecodeKey = attribute.Key("security.obfuscation.inspected_after_decode")
+)
+
+// Authorization decision record [RFC v0.4 gap closure]
+const (
+	SecurityAuthorizationDecisionKey             = attribute.Key("security.authorization.decision")
+	SecurityAuthorizationDecisionIDKey           = attribute.Key("security.authorization.decision_id")
+	SecurityAuthorizationOperationKey            = attribute.Key("security.authorization.operation")
+	SecurityAuthorizationReasonKey               = attribute.Key("security.authorization.reason")
+	SecurityAuthorizationReasonCodeKey           = attribute.Key("security.authorization.reason_code")
+	SecurityAuthorizationAuthorityTypeKey        = attribute.Key("security.authorization.authority.type")
+	SecurityAuthorizationAuthorityIDKey          = attribute.Key("security.authorization.authority.id")
+	SecurityAuthorizationAuthorityEngineKey      = attribute.Key("security.authorization.authority.engine")
+	SecurityAuthorizationRuleIDKey               = attribute.Key("security.authorization.rule_id")
+	SecurityAuthorizationPolicyVersionKey        = attribute.Key("security.authorization.policy_version")
+	SecurityAuthorizationObligationsKey          = attribute.Key("security.authorization.obligations")
+	SecurityAuthorizationObligationsFulfilledKey = attribute.Key("security.authorization.obligations_fulfilled")
+	SecurityAuthorizationPrincipalKey            = attribute.Key("security.authorization.principal")
+	SecurityAuthorizationResourceKey             = attribute.Key("security.authorization.resource")
+	SecurityAuthorizationLatencyMsKey            = attribute.Key("security.authorization.latency_ms")
+)
+
+// Session taint labels [RFC v0.4 gap closure]
+const (
+	SecurityTaintLabelsKey                 = attribute.Key("security.taint.labels")
+	SecurityTaintScopeKey                  = attribute.Key("security.taint.scope")
+	SecurityTaintLabelCountKey             = attribute.Key("security.taint.label_count")
+	SecurityTaintAppliedByKey              = attribute.Key("security.taint.applied_by")
+	SecurityTaintOriginKey                 = attribute.Key("security.taint.origin")
+	SecurityTaintOriginSpanIDKey           = attribute.Key("security.taint.origin_span_id")
+	SecurityTaintFlowDecisionKey           = attribute.Key("security.taint.flow.decision")
+	SecurityTaintDeniedKey                 = attribute.Key("security.taint.denied")
+	SecurityTaintDeniedLabelsKey           = attribute.Key("security.taint.denied_labels")
+	SecurityTaintDeclassifiedByKey         = attribute.Key("security.taint.declassified_by")
+	SecurityTaintDeclassificationReasonKey = attribute.Key("security.taint.declassification_reason")
+)
+
+// Enforcement-point availability [RFC v0.4 gap closure]
+const (
+	SecurityEnforcementPointNameKey     = attribute.Key("security.enforcement.point.name")
+	SecurityEnforcementPointTypeKey     = attribute.Key("security.enforcement.point.type")
+	SecurityEnforcementPointVersionKey  = attribute.Key("security.enforcement.point.version")
+	SecurityEnforcementReachedKey       = attribute.Key("security.enforcement.reached")
+	SecurityEnforcementLatencyMsKey     = attribute.Key("security.enforcement.latency_ms")
+	SecurityEnforcementTimeoutMsKey     = attribute.Key("security.enforcement.timeout_ms")
+	SecurityEnforcementFailureModeKey   = attribute.Key("security.enforcement.failure_mode")
+	SecurityEnforcementFailureReasonKey = attribute.Key("security.enforcement.failure_reason")
+	SecurityEnforcementActionTakenKey   = attribute.Key("security.enforcement.action_taken")
+	SecurityEnforcementDegradedModeKey  = attribute.Key("security.enforcement.degraded_mode")
+)
+
+// Attribute source / trusted-provenance marking [RFC v0.4 gap closure]
+const (
+	SecurityAttributeSourceDefaultKey          = attribute.Key("security.attribute_source.default")
+	SecurityAttributeSourceMapKey              = attribute.Key("security.attribute_source.map")
+	SecurityAttributeSourceSelfAssertedKey     = attribute.Key("security.attribute_source.self_asserted")
+	SecurityAttributeSourceVerifiedKey         = attribute.Key("security.attribute_source.verified")
+	SecurityAttributeSourceAuthorityIDKey      = attribute.Key("security.attribute_source.authority.id")
+	SecurityAttributeSourceVerificationTimeKey = attribute.Key("security.attribute_source.verification_time")
+)
+
+// Mediation coverage & bypass path [RFC v0.4 gap closure]
+const (
+	SecurityMediationMediatedKey           = attribute.Key("security.mediation.mediated")
+	SecurityMediationPlacementKey          = attribute.Key("security.mediation.placement")
+	SecurityMediationReferenceMonitorIDKey = attribute.Key("security.mediation.reference_monitor.id")
+	SecurityMediationBypassAvailableKey    = attribute.Key("security.mediation.bypass_available")
+	SecurityMediationBypassPathsKey        = attribute.Key("security.mediation.bypass_paths")
+	SecurityMediationCoverageRatioKey      = attribute.Key("security.mediation.coverage_ratio")
+	SecurityMediationCapabilityKey         = attribute.Key("security.mediation.capability")
+	SecurityMediationAssessedAtKey         = attribute.Key("security.mediation.assessed_at")
+)
+
+// Tenant-crossing detection [RFC v0.4 gap closure]
+const (
+	SecurityTenantCrossingDetectedKey = attribute.Key("security.tenant.crossing_detected")
+	SecurityTenantCrossingTypeKey     = attribute.Key("security.tenant.crossing_type")
+	SecurityTenantExpectedKey         = attribute.Key("security.tenant.expected")
+)
+
+// Values for security.authorization.decision (RFC v0.4 gap closure).
+const (
+	SecurityAuthorizationdecisionAllow         = "allow"
+	SecurityAuthorizationdecisionDeny          = "deny"
+	SecurityAuthorizationdecisionChallenge     = "challenge"
+	SecurityAuthorizationdecisionNotApplicable = "not_applicable"
+	SecurityAuthorizationdecisionError         = "error"
+)
+
+// Values for security.taint.flow.decision (RFC v0.4 gap closure).
+const (
+	SecurityTaintflowdecisionAllowed      = "allowed"
+	SecurityTaintflowdecisionDenied       = "denied"
+	SecurityTaintflowdecisionDeclassified = "declassified"
+	SecurityTaintflowdecisionNotEvaluated = "not_evaluated"
+)
+
+// Values for security.taint.scope (RFC v0.4 gap closure).
+const (
+	SecurityTaintscopeSession = "session"
+	SecurityTaintscopeTurn    = "turn"
+	SecurityTaintscopeMessage = "message"
+	SecurityTaintscopeRun     = "run"
+)
+
+// Values for security.enforcement.failure_mode (RFC v0.4 gap closure).
+const (
+	SecurityEnforcementfailuremodeNone        = "none"
+	SecurityEnforcementfailuremodeFailOpen    = "fail_open"
+	SecurityEnforcementfailuremodeFailClosed  = "fail_closed"
+	SecurityEnforcementfailuremodeTimeout     = "timeout"
+	SecurityEnforcementfailuremodeUnreachable = "unreachable"
+	SecurityEnforcementfailuremodeDegraded    = "degraded"
+)
+
+// Values for security.attribute_source.* (RFC v0.4 gap closure).
+const (
+	SecurityAttributesourceSelfAsserted = "self_asserted"
+	SecurityAttributesourceVerified     = "verified"
+	SecurityAttributesourceDerived      = "derived"
+	SecurityAttributesourceUnknown      = "unknown"
+)
+
+// --- ComplianceAttributes [RFC v0.4 gap closure] ---
+
+// Authorization decision record [RFC v0.4 gap closure]
+const (
+	ComplianceFrameworkKey = attribute.Key("compliance.framework")
+	ComplianceControlIDKey = attribute.Key("compliance.control_id")
+)
+
+// --- SupplyChainAttributes [RFC v0.4 gap closure] ---
+
+// Execution environment / sandbox [RFC v0.4 gap closure]
+const (
+	SupplyChainRuntimeSandboxModeKey              = attribute.Key("supply_chain.runtime.sandbox.mode")
+	SupplyChainRuntimeSandboxProviderKey          = attribute.Key("supply_chain.runtime.sandbox.provider")
+	SupplyChainRuntimeLanguageNameKey             = attribute.Key("supply_chain.runtime.language.name")
+	SupplyChainRuntimeLanguageVersionKey          = attribute.Key("supply_chain.runtime.language.version")
+	SupplyChainRuntimeOSTypeKey                   = attribute.Key("supply_chain.runtime.os.type")
+	SupplyChainRuntimeOSVersionKey                = attribute.Key("supply_chain.runtime.os.version")
+	SupplyChainRuntimeArchitectureKey             = attribute.Key("supply_chain.runtime.architecture")
+	SupplyChainRuntimeInstanceIDKey               = attribute.Key("supply_chain.runtime.instance.id")
+	SupplyChainRuntimeImageDigestKey              = attribute.Key("supply_chain.runtime.image.digest")
+	SupplyChainRuntimeImageRefKey                 = attribute.Key("supply_chain.runtime.image.ref")
+	SupplyChainRuntimePrivilegedKey               = attribute.Key("supply_chain.runtime.privileged")
+	SupplyChainRuntimeUserKey                     = attribute.Key("supply_chain.runtime.user")
+	SupplyChainRuntimeCapabilitiesKey             = attribute.Key("supply_chain.runtime.capabilities")
+	SupplyChainRuntimeNetworkEgressPolicyKey      = attribute.Key("supply_chain.runtime.network.egress_policy")
+	SupplyChainRuntimeNetworkEgressAllowlistKey   = attribute.Key("supply_chain.runtime.network.egress_allowlist")
+	SupplyChainRuntimeNetworkNamespaceKey         = attribute.Key("supply_chain.runtime.network.namespace")
+	SupplyChainRuntimeFilesystemModeKey           = attribute.Key("supply_chain.runtime.filesystem.mode")
+	SupplyChainRuntimeFilesystemMountsKey         = attribute.Key("supply_chain.runtime.filesystem.mounts")
+	SupplyChainRuntimeResourceCPULimitKey         = attribute.Key("supply_chain.runtime.resource.cpu_limit")
+	SupplyChainRuntimeResourceMemoryLimitBytesKey = attribute.Key("supply_chain.runtime.resource.memory_limit_bytes")
+	SupplyChainRuntimeResourceTimeoutMsKey        = attribute.Key("supply_chain.runtime.resource.timeout_ms")
+	SupplyChainRuntimeSecretsExposedKey           = attribute.Key("supply_chain.runtime.secrets.exposed")
+	SupplyChainRuntimeSecretsCountKey             = attribute.Key("supply_chain.runtime.secrets.count")
+	SupplyChainRuntimeAttestationMethodKey        = attribute.Key("supply_chain.runtime.attestation.method")
+	SupplyChainRuntimeAttestationVerifiedKey      = attribute.Key("supply_chain.runtime.attestation.verified")
+	SupplyChainRuntimeEscapeDetectedKey           = attribute.Key("supply_chain.runtime.escape_detected")
+	SupplyChainRuntimeEscapeIndicatorKey          = attribute.Key("supply_chain.runtime.escape_indicator")
+)
+
+// --- MemoryAttributes [RFC v0.4 gap closure] ---
+
+// Declared memory configuration [RFC v0.4 gap closure]
+const (
+	MemoryConfigEnabledKey           = attribute.Key("memory.config.enabled")
+	MemoryConfigNameKey              = attribute.Key("memory.config.name")
+	MemoryConfigTypesKey             = attribute.Key("memory.config.types")
+	MemoryConfigBackendKey           = attribute.Key("memory.config.backend")
+	MemoryConfigScopeKey             = attribute.Key("memory.config.scope")
+	MemoryConfigPersistenceKey       = attribute.Key("memory.config.persistence")
+	MemoryConfigRetentionSecondsKey  = attribute.Key("memory.config.retention_seconds")
+	MemoryConfigMaxEntriesKey        = attribute.Key("memory.config.max_entries")
+	MemoryConfigMaxBytesKey          = attribute.Key("memory.config.max_bytes")
+	MemoryConfigRetrievalTopKKey     = attribute.Key("memory.config.retrieval.top_k")
+	MemoryConfigRetrievalScoringKey  = attribute.Key("memory.config.retrieval.scoring")
+	MemoryConfigRetrievalMinScoreKey = attribute.Key("memory.config.retrieval.min_score")
+	MemoryConfigWritePrincipalsKey   = attribute.Key("memory.config.write_principals")
+	MemoryConfigAgentWritableKey     = attribute.Key("memory.config.agent_writable")
+	MemoryConfigWriteReviewKey       = attribute.Key("memory.config.write_review")
+	MemoryConfigCrossSessionKey      = attribute.Key("memory.config.cross_session")
+	MemoryConfigCrossTenantKey       = attribute.Key("memory.config.cross_tenant")
+	MemoryConfigClassificationKey    = attribute.Key("memory.config.classification")
+	MemoryConfigEncryptionAtRestKey  = attribute.Key("memory.config.encryption_at_rest")
+	MemoryConfigProfileRefKey        = attribute.Key("memory.config.profile_ref")
+	MemoryConfigHashKey              = attribute.Key("memory.config.hash")
+)
+
+// Values for memory.config.scope (RFC v0.4 gap closure).
+const (
+	MemoryConfigscopeTurn    = "turn"
+	MemoryConfigscopeSession = "session"
+	MemoryConfigscopeUser    = "user"
+	MemoryConfigscopeAgent   = "agent"
+	MemoryConfigscopeTenant  = "tenant"
+	MemoryConfigscopeGlobal  = "global"
+)
+
+// Values for memory.config.write_review (RFC v0.4 gap closure).
+const (
+	MemoryConfigwritereviewNone      = "none"
+	MemoryConfigwritereviewPolicy    = "policy"
+	MemoryConfigwritereviewGuardrail = "guardrail"
+	MemoryConfigwritereviewHuman     = "human"
+)
+
+// --- IdentityAttributes [RFC v0.4 gap closure] ---
+
+// Trust-domain crossing & delegation depth [RFC v0.4 gap closure]
+const (
+	IdentityBoundaryCrossedKey               = attribute.Key("identity.boundary.crossed")
+	IdentityBoundarySourceDomainKey          = attribute.Key("identity.boundary.source_domain")
+	IdentityBoundaryTargetDomainKey          = attribute.Key("identity.boundary.target_domain")
+	IdentityBoundaryCrossingTypeKey          = attribute.Key("identity.boundary.crossing_type")
+	IdentityBoundaryDecisionKey              = attribute.Key("identity.boundary.decision")
+	IdentityBoundaryDecisionReasonKey        = attribute.Key("identity.boundary.decision_reason")
+	IdentityBoundaryPolicyRefKey             = attribute.Key("identity.boundary.policy_ref")
+	IdentityBoundaryCrossingsCountKey        = attribute.Key("identity.boundary.crossings_count")
+	IdentityBoundaryDomainsTraversedKey      = attribute.Key("identity.boundary.domains_traversed")
+	IdentityDelegationDepthKey               = attribute.Key("identity.delegation.depth")
+	IdentityDelegationMaxDepthKey            = attribute.Key("identity.delegation.max_depth")
+	IdentityDelegationDepthExceededKey       = attribute.Key("identity.delegation.depth_exceeded")
+	IdentityDelegationRootPrincipalKey       = attribute.Key("identity.delegation.root_principal")
+	IdentityDelegationRootPrincipalTypeKey   = attribute.Key("identity.delegation.root_principal_type")
+	IdentityDelegationRootAuthenticatedAtKey = attribute.Key("identity.delegation.root_authenticated_at")
+)
+
+// Credential minting & scope-narrowing check [RFC v0.4 gap closure]
+const (
+	IdentityCredentialMintOperationKey           = attribute.Key("identity.credential.mint.operation")
+	IdentityCredentialMintGrantTypeKey           = attribute.Key("identity.credential.mint.grant_type")
+	IdentityCredentialMintSubjectClassKey        = attribute.Key("identity.credential.mint.subject_class")
+	IdentityCredentialMintParentIDKey            = attribute.Key("identity.credential.mint.parent_id")
+	IdentityCredentialMintChildIDKey             = attribute.Key("identity.credential.mint.child_id")
+	IdentityCredentialMintIssuerKey              = attribute.Key("identity.credential.mint.issuer")
+	IdentityCredentialMintSubjectKey             = attribute.Key("identity.credential.mint.subject")
+	IdentityCredentialMintAudienceKey            = attribute.Key("identity.credential.mint.audience")
+	IdentityCredentialScopeParentKey             = attribute.Key("identity.credential.scope.parent")
+	IdentityCredentialScopeChildKey              = attribute.Key("identity.credential.scope.child")
+	IdentityCredentialScopeRequestedKey          = attribute.Key("identity.credential.scope.requested")
+	IdentityCredentialScopeNarrowedKey           = attribute.Key("identity.credential.scope.narrowed")
+	IdentityCredentialScopeVerifiedKey           = attribute.Key("identity.credential.scope.verified")
+	IdentityCredentialScopeForwardedUnchangedKey = attribute.Key("identity.credential.scope.forwarded_unchanged")
+	IdentityCredentialScopeAddedKey              = attribute.Key("identity.credential.scope.added")
+	IdentityCredentialScopeRemovedKey            = attribute.Key("identity.credential.scope.removed")
+	IdentityCredentialScopeEscalationKey         = attribute.Key("identity.credential.scope.escalation")
+	IdentityCredentialMintParentTTLSecondsKey    = attribute.Key("identity.credential.mint.parent_ttl_seconds")
+	IdentityCredentialMintChildTTLSecondsKey     = attribute.Key("identity.credential.mint.child_ttl_seconds")
+	IdentityCredentialMintResourceIndicatorsKey  = attribute.Key("identity.credential.mint.resource_indicators")
+	IdentityCredentialMintConstraintsKey         = attribute.Key("identity.credential.mint.constraints")
+	IdentityCredentialMintResultKey              = attribute.Key("identity.credential.mint.result")
+	IdentityCredentialMintDenialReasonKey        = attribute.Key("identity.credential.mint.denial_reason")
+	IdentityCredentialMintOnBehalfOfKey          = attribute.Key("identity.credential.mint.on_behalf_of")
+)
+
+// Human approval / elicitation [RFC v0.4 gap closure]
+const (
+	IdentityApprovalIDKey                     = attribute.Key("identity.approval.id")
+	IdentityApprovalRequiredKey               = attribute.Key("identity.approval.required")
+	IdentityApprovalStatusKey                 = attribute.Key("identity.approval.status")
+	IdentityApprovalTriggerKey                = attribute.Key("identity.approval.trigger")
+	IdentityApprovalOperationKey              = attribute.Key("identity.approval.operation")
+	IdentityApprovalPromptHashKey             = attribute.Key("identity.approval.prompt_hash")
+	IdentityApprovalOperationHashKey          = attribute.Key("identity.approval.operation_hash")
+	IdentityApprovalScopeBindingResultKey     = attribute.Key("identity.approval.scope_binding.result")
+	IdentityApprovalScopeBindingDivergenceKey = attribute.Key("identity.approval.scope_binding.divergence")
+	IdentityApprovalDecisionKey               = attribute.Key("identity.approval.decision")
+	IdentityApprovalApproverKey               = attribute.Key("identity.approval.approver")
+	IdentityApprovalApproverTypeKey           = attribute.Key("identity.approval.approver_type")
+	IdentityApprovalApproverVerifiedKey       = attribute.Key("identity.approval.approver_verified")
+	IdentityApprovalAuthMethodKey             = attribute.Key("identity.approval.auth_method")
+	IdentityApprovalRequestedAtKey            = attribute.Key("identity.approval.requested_at")
+	IdentityApprovalDecidedAtKey              = attribute.Key("identity.approval.decided_at")
+	IdentityApprovalLatencyMsKey              = attribute.Key("identity.approval.latency_ms")
+	IdentityApprovalTimeoutMsKey              = attribute.Key("identity.approval.timeout_ms")
+	IdentityApprovalTimeoutActionKey          = attribute.Key("identity.approval.timeout_action")
+	IdentityApprovalChannelKey                = attribute.Key("identity.approval.channel")
+	IdentityApprovalElicitationSchemaHashKey  = attribute.Key("identity.approval.elicitation.schema_hash")
+	IdentityApprovalElicitationFieldsKey      = attribute.Key("identity.approval.elicitation.fields")
+	IdentityApprovalScopeKey                  = attribute.Key("identity.approval.scope")
+	IdentityApprovalRememberedKey             = attribute.Key("identity.approval.remembered")
+	IdentityApprovalBypassReasonKey           = attribute.Key("identity.approval.bypass_reason")
+	IdentityApprovalPriorDenialsKey           = attribute.Key("identity.approval.prior_denials")
+)
+
+// Values for identity.approval.decision (RFC v0.4 gap closure).
+const (
+	IdentityApprovaldecisionApproved     = "approved"
+	IdentityApprovaldecisionDenied       = "denied"
+	IdentityApprovaldecisionTimeout      = "timeout"
+	IdentityApprovaldecisionCancelled    = "cancelled"
+	IdentityApprovaldecisionBypassed     = "bypassed"
+	IdentityApprovaldecisionAutoApproved = "auto_approved"
+)
+
+// Values for identity.approval.scope_binding.result (RFC v0.4 gap closure).
+const (
+	IdentityApprovalscopebindingMatch      = "match"
+	IdentityApprovalscopebindingMismatch   = "mismatch"
+	IdentityApprovalscopebindingNotChecked = "not_checked"
+)
+
+// Values for identity.approval.status (RFC v0.4 gap closure).
+const (
+	IdentityApprovalstatusPending  = "pending"
+	IdentityApprovalstatusResolved = "resolved"
+	IdentityApprovalstatusExpired  = "expired"
+)
+
+// Values for identity.credential.mint.result (RFC v0.4 gap closure).
+const (
+	IdentityCredentialmintresultIssued = "issued"
+	IdentityCredentialmintresultDenied = "denied"
+	IdentityCredentialmintresultError  = "error"
+)
+
+// --- AssetInventoryAttributes [RFC v0.4 gap closure] ---
+
+// Organization / tenant ID [RFC v0.4 gap closure]
+const (
+	AssetInventoryTenantIDKey                = attribute.Key("asset.tenant.id")
+	AssetInventoryOrganizationIDKey          = attribute.Key("asset.organization.id")
+	AssetInventoryOrganizationNameKey        = attribute.Key("asset.organization.name")
+	AssetInventoryTenantTierKey              = attribute.Key("asset.tenant.tier")
+	AssetInventoryTenantIsolationBoundaryKey = attribute.Key("asset.tenant.isolation_boundary")
+	AssetInventoryTenantDataResidencyKey     = attribute.Key("asset.tenant.data_residency")
+)
+
+// Capability-set change event [RFC v0.4 gap closure]
+const (
+	AssetInventoryCapabilityChangeTypeKey      = attribute.Key("asset.capability.change_type")
+	AssetInventoryCapabilitySetHashKey         = attribute.Key("asset.capability.set.hash")
+	AssetInventoryCapabilitySetPreviousHashKey = attribute.Key("asset.capability.set.previous_hash")
+	AssetInventoryCapabilitySetSizeKey         = attribute.Key("asset.capability.set.size")
+	AssetInventoryCapabilityAddedKey           = attribute.Key("asset.capability.added")
+	AssetInventoryCapabilityRemovedKey         = attribute.Key("asset.capability.removed")
+	AssetInventoryCapabilityModifiedKey        = attribute.Key("asset.capability.modified")
+	AssetInventoryCapabilityCategoryKey        = attribute.Key("asset.capability.category")
+	AssetInventoryCapabilityRiskDeltaKey       = attribute.Key("asset.capability.risk_delta")
+	AssetInventoryCapabilityPrivilegedAddedKey = attribute.Key("asset.capability.privileged_added")
+	AssetInventoryCapabilityChangeSourceKey    = attribute.Key("asset.capability.change_source")
+	AssetInventoryCapabilityChangeActorKey     = attribute.Key("asset.capability.change_actor")
+	AssetInventoryCapabilityApprovedKey        = attribute.Key("asset.capability.approved")
+	AssetInventoryCapabilityApprovalRefKey     = attribute.Key("asset.capability.approval_ref")
+	AssetInventoryCapabilityDetectedAtKey      = attribute.Key("asset.capability.detected_at")
+	AssetInventoryCapabilityDetectionMethodKey = attribute.Key("asset.capability.detection_method")
+)
+
+// Instrumentation coverage / hook attestation [RFC v0.4 gap closure]
+const (
+	AssetInventoryInstrumentationEnabledKey              = attribute.Key("asset.instrumentation.enabled")
+	AssetInventoryInstrumentationVersionKey              = attribute.Key("asset.instrumentation.version")
+	AssetInventoryInstrumentationSdkKey                  = attribute.Key("asset.instrumentation.sdk")
+	AssetInventoryInstrumentationHooksDeclaredKey        = attribute.Key("asset.instrumentation.hooks.declared")
+	AssetInventoryInstrumentationHooksActiveKey          = attribute.Key("asset.instrumentation.hooks.active")
+	AssetInventoryInstrumentationHooksMissingKey         = attribute.Key("asset.instrumentation.hooks.missing")
+	AssetInventoryInstrumentationCoverageRatioKey        = attribute.Key("asset.instrumentation.coverage_ratio")
+	AssetInventoryInstrumentationUninstrumentedPathsKey  = attribute.Key("asset.instrumentation.uninstrumented_paths")
+	AssetInventoryInstrumentationAttestationMethodKey    = attribute.Key("asset.instrumentation.attestation.method")
+	AssetInventoryInstrumentationAttestationVerifiedKey  = attribute.Key("asset.instrumentation.attestation.verified")
+	AssetInventoryInstrumentationAttestationSignatureKey = attribute.Key("asset.instrumentation.attestation.signature")
+	AssetInventoryInstrumentationAttestationAtKey        = attribute.Key("asset.instrumentation.attestation.at")
+	AssetInventoryInstrumentationTamperDetectedKey       = attribute.Key("asset.instrumentation.tamper_detected")
+	AssetInventoryInstrumentationTamperIndicatorKey      = attribute.Key("asset.instrumentation.tamper_indicator")
+	AssetInventoryInstrumentationExporterConfiguredKey   = attribute.Key("asset.instrumentation.exporter.configured")
+	AssetInventoryInstrumentationExporterReachableKey    = attribute.Key("asset.instrumentation.exporter.reachable")
+	AssetInventoryInstrumentationDroppedSpansKey         = attribute.Key("asset.instrumentation.dropped_spans")
+)
+
+// Values for asset.capability.change_type (RFC v0.4 gap closure).
+const (
+	AssetInventoryCapabilitychangetypeAdded    = "added"
+	AssetInventoryCapabilitychangetypeRemoved  = "removed"
+	AssetInventoryCapabilitychangetypeModified = "modified"
+	AssetInventoryCapabilitychangetypeReplaced = "replaced"
+)
+
+// Values for asset.capability.change_source (RFC v0.4 gap closure).
+const (
+	AssetInventoryCapabilitychangesourceDeployment       = "deployment"
+	AssetInventoryCapabilitychangesourceConfiguration    = "configuration"
+	AssetInventoryCapabilitychangesourceRuntimeDiscovery = "runtime_discovery"
+	AssetInventoryCapabilitychangesourceServerPush       = "server_push"
+	AssetInventoryCapabilitychangesourceOperator         = "operator"
+	AssetInventoryCapabilitychangesourceUnknown          = "unknown"
+)
+
+// --- A2AAttributes [RFC v0.4 gap closure] ---
+
+// Task lifecycle event [RFC v0.4 gap closure]
+const (
+	A2ATaskLifecycleEventKey               = attribute.Key("a2a.task.lifecycle.event")
+	A2ATaskLifecycleFromStateKey           = attribute.Key("a2a.task.lifecycle.from_state")
+	A2ATaskLifecycleToStateKey             = attribute.Key("a2a.task.lifecycle.to_state")
+	A2ATaskLifecycleTransitionValidKey     = attribute.Key("a2a.task.lifecycle.transition_valid")
+	A2ATaskLifecycleActorKey               = attribute.Key("a2a.task.lifecycle.actor")
+	A2ATaskLifecycleActorTypeKey           = attribute.Key("a2a.task.lifecycle.actor_type")
+	A2ATaskLifecycleAtKey                  = attribute.Key("a2a.task.lifecycle.at")
+	A2ATaskLifecycleAgeMsKey               = attribute.Key("a2a.task.lifecycle.age_ms")
+	A2ATaskLifecycleTerminalKey            = attribute.Key("a2a.task.lifecycle.terminal")
+	A2ATaskLifecycleExpectedTerminalByKey  = attribute.Key("a2a.task.lifecycle.expected_terminal_by")
+	A2ATaskLifecycleOrphanedKey            = attribute.Key("a2a.task.lifecycle.orphaned")
+	A2ATaskLifecycleDelegatedScopeKey      = attribute.Key("a2a.task.lifecycle.delegated_scope")
+	A2ATaskLifecycleDelegationExpiresAtKey = attribute.Key("a2a.task.lifecycle.delegation_expires_at")
+	A2ATaskLifecycleInitiatingTraceIDKey   = attribute.Key("a2a.task.lifecycle.initiating_trace_id")
+	A2ATaskLifecycleInitiatingSpanIDKey    = attribute.Key("a2a.task.lifecycle.initiating_span_id")
+	A2ATaskLifecycleRootPrincipalKey       = attribute.Key("a2a.task.lifecycle.root_principal")
+	A2ATaskLifecycleFailureReasonKey       = attribute.Key("a2a.task.lifecycle.failure_reason")
+	A2ATaskLifecycleCancelRequestedByKey   = attribute.Key("a2a.task.lifecycle.cancel_requested_by")
+	A2ATaskLifecycleInputRequiredReasonKey = attribute.Key("a2a.task.lifecycle.input_required_reason")
+	A2ATaskLifecycleTransitionCountKey     = attribute.Key("a2a.task.lifecycle.transition_count")
+	A2ATaskLifecyclePollCountKey           = attribute.Key("a2a.task.lifecycle.poll_count")
+	A2ATaskLifecycleResubscribeCountKey    = attribute.Key("a2a.task.lifecycle.resubscribe_count")
+	A2ATaskLifecycleSubscriberKey          = attribute.Key("a2a.task.lifecycle.subscriber")
+)
+
+// Push notification configuration [RFC v0.4 gap closure]
+const (
+	A2APushConfigURLKey           = attribute.Key("a2a.push.config.url")
+	A2APushConfigURLHashKey       = attribute.Key("a2a.push.config.url_hash")
+	A2APushConfigChangedKey       = attribute.Key("a2a.push.config.changed")
+	A2APushConfigAuthenticatedKey = attribute.Key("a2a.push.config.authenticated")
+	A2APushConfigSchemeKey        = attribute.Key("a2a.push.config.scheme")
+	A2APushConfigInAllowlistKey   = attribute.Key("a2a.push.config.in_allowlist")
+	A2APushConfigSetByKey         = attribute.Key("a2a.push.config.set_by")
+)
+
+// Values for a2a.task.lifecycle.event (RFC v0.4 gap closure).
+const (
+	A2ATasklifecycleeventSubmitted     = "submitted"
+	A2ATasklifecycleeventAccepted      = "accepted"
+	A2ATasklifecycleeventWorking       = "working"
+	A2ATasklifecycleeventInputRequired = "input_required"
+	A2ATasklifecycleeventAuthRequired  = "auth_required"
+	A2ATasklifecycleeventCompleted     = "completed"
+	A2ATasklifecycleeventFailed        = "failed"
+	A2ATasklifecycleeventCanceled      = "canceled"
+	A2ATasklifecycleeventRejected      = "rejected"
+	A2ATasklifecycleeventExpired       = "expired"
+	A2ATasklifecycleeventOrphaned      = "orphaned"
+	A2ATasklifecycleeventUnknown       = "unknown"
+)
+
+// --- ObservabilityAttributes [RFC v0.4 gap closure] ---
+
+// Event sequence continuity [RFC v0.4 gap closure]
+const (
+	ObservabilitySequenceNumberKey           = attribute.Key("observability.sequence.number")
+	ObservabilitySequenceScopeIDKey          = attribute.Key("observability.sequence.scope_id")
+	ObservabilitySequenceScopeTypeKey        = attribute.Key("observability.sequence.scope_type")
+	ObservabilitySequencePrevHashKey         = attribute.Key("observability.sequence.prev_hash")
+	ObservabilitySequenceHashKey             = attribute.Key("observability.sequence.hash")
+	ObservabilitySequenceSignatureKey        = attribute.Key("observability.sequence.signature")
+	ObservabilitySequenceSignerKeyIDKey      = attribute.Key("observability.sequence.signer_key_id")
+	ObservabilitySequenceGapDetectedKey      = attribute.Key("observability.sequence.gap_detected")
+	ObservabilitySequenceGapSizeKey          = attribute.Key("observability.sequence.gap_size")
+	ObservabilitySequenceReorderedKey        = attribute.Key("observability.sequence.reordered")
+	ObservabilitySamplingDecisionKey         = attribute.Key("observability.sampling.decision")
+	ObservabilitySamplingSecurityRelevantKey = attribute.Key("observability.sampling.security_relevant")
 )

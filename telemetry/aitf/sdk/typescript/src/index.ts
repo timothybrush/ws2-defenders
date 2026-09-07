@@ -8,7 +8,7 @@
  * instrumentation.
  */
 
-export const VERSION = "1.0.0";
+export const VERSION = "0.4.0";
 
 // Semantic Conventions
 export {
@@ -19,6 +19,7 @@ export {
   RAGAttributes,
   SecurityAttributes,
   ComplianceAttributes,
+  ClaudeComplianceAttributes,
   CostAttributes,
   QualityAttributes,
   SupplyChainAttributes,
@@ -29,6 +30,10 @@ export {
   AssetInventoryAttributes,
   DriftDetectionAttributes,
   MemorySecurityAttributes,
+  A2AAttributes,
+  ACPAttributes,
+  ANPAttributes,
+  AgentCommAttributes,
   AgenticLogAttributes,
 } from "./semantic-conventions/attributes";
 
@@ -185,7 +190,17 @@ export {
   OCSFSeverity,
   OCSFStatus,
   OCSFActivity,
+  OCSFCategoryUID,
+  OCSFClassUID,
   AIClassUID,
+  AgentTypeID,
+  AGENT_TYPE_LABELS,
+  AgentProtocolID,
+  AGENT_PROTOCOL_LABELS,
+  OCSF_AI_CATEGORY_UID,
+  LEGACY_AI_CLASS_UIDS,
+  normalizeAgentTypeId,
+  normalizeAgentProtocolId,
   createMetadata,
   createTokenUsage,
   createBaseEvent,
@@ -201,14 +216,37 @@ export {
   type AICostInfo,
   type AITeamInfo,
   type AISecurityFinding,
+  type OCSFAIAgent,
+  type OCSFDelegation,
+  type OCSFDelegationNode,
+  type OCSFDelegationLineage,
+  type OCSFAgentMessage,
   type ComplianceMetadata,
   type AIBaseEvent,
 } from "./ocsf/schema";
+
+// OCSF Agentic Crosswalk (OCSF PR #1641 / issue #1640)
+export {
+  buildAiAgent,
+  buildDelegation,
+  buildDelegationLineage,
+  OCSF_AGENT_ACTIVITY_CROSSWALK,
+  OCSF_DELEGATION_ACTIVITY_CROSSWALK,
+  OCSF_CLASS_CROSSWALK,
+  type OCSFClassTarget,
+} from "./ocsf/crosswalk";
+
+// OCSF Agent-to-agent communication normalization (A2A / ACP / ANP)
+export {
+  buildAgentMessage,
+  canonicalCommStatus,
+} from "./ocsf/agent-comm";
 
 // OCSF Event Classes
 export {
   type AIModelInferenceEvent,
   type AIAgentActivityEvent,
+  type AIAgentCommunicationEvent,
   type AIToolExecutionEvent,
   type AIDataRetrievalEvent,
   type AISecurityFindingEvent,
@@ -219,6 +257,7 @@ export {
   type AIAssetInventoryEvent,
   createModelInferenceEvent,
   createAgentActivityEvent,
+  createAgentCommunicationEvent,
   createToolExecutionEvent,
   createDataRetrievalEvent,
   createSecurityFindingEvent,
@@ -236,6 +275,15 @@ export {
   ComplianceMapper,
   FRAMEWORK_MAPPINGS,
 } from "./ocsf/compliance-mapper";
+
+export {
+  ClaudeComplianceMapper,
+  classify as classifyClaudeComplianceActivity,
+  iterActivities,
+  type ActivityFeedOptions,
+  type ClassifyResult,
+  type ClaudeComplianceActivity,
+} from "./ocsf/claude-compliance";
 
 // Exporters
 export {

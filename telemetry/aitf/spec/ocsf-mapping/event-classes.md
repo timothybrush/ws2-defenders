@@ -1,29 +1,77 @@
-# OCSF Category 7: AI Event Classes
+# AITF AI Event Classes (OCSF class reuse)
 
-AITF defines OCSF event classes for AI-specific security telemetry, enabling SIEM/XDR integration.
+AITF emits AI-specific security telemetry using **existing OCSF event classes**
+enriched with the `ai_operation` profile, enabling SIEM/XDR integration.
 
 ## Overview
 
-These event classes extend the OCSF v1.1.0 specification with a new Category 7 for AI systems. They enable AI telemetry to be consumed by security tools using the same schema as traditional security events.
+Following OCSF's **"reuse existing objects and profiles"** direction
+([PR #1641](https://github.com/ocsf/ocsf-schema/pull/1641),
+[issue #1640](https://github.com/ocsf/ocsf-schema/issues/1640)), AITF does
+**not** define a bespoke AI category. Instead, each AITF AI event maps onto the
+existing OCSF class it naturally belongs to and carries AI context via the
+`ai_agent` object + `ai_operation` profile (and the `delegation` object where
+relevant).
 
-### Category: AI System Activity (7)
+**OCSF v1.9.0** (released 2026-08-03) ratified that direction: it landed the
+`ai_agent` and `delegation` objects and the `ai_operation` profile, and
+attached that profile to the `system`, `network`, `application` and `iam` base
+event classes so every System, Network, Application and IAM event can be
+attributed to the agent that performed it. AITF therefore targets **OCSF
+v1.9.0** and every class below is a released class.
 
-| Class UID | Event Class | Description |
-|-----------|-------------|-------------|
-| 7001 | AI Model Inference | LLM/model inference requests and responses |
-| 7002 | AI Agent Activity | Agent lifecycle, reasoning, delegation |
-| 7003 | AI Tool Execution | Tool/function calls including MCP tools |
-| 7004 | AI Data Retrieval | RAG, vector search, knowledge retrieval |
-| 7005 | AI Security Finding | Security events, guardrails, policy violations |
-| 7006 | AI Supply Chain | Model provenance, AI-BOM, integrity |
-| 7007 | AI Governance | Compliance, audit, regulatory events |
-| 7008 | AI Identity | Agent identity, authentication, authorization, delegation, trust |
-| 7009 | AI Model Operations | Model lifecycle: training, evaluation, deployment, monitoring, serving |
-| 7010 | AI Asset Inventory | Asset registration, discovery, audit, risk classification, drift detection |
+> AITF previously used a bespoke Category 7 (classes 7001–7010). That collided
+> with released OCSF (`uid 7` = *Remediation*) and conflicted with OCSF's reuse
+> model, so **Category 7 has been dropped**. AITF then proposed an `ai`
+> category (`uid 9`) with provisional classes `9001`–`9003` for control-plane
+> lifecycle; that category was **never ratified** — OCSF v1.9.0
+> `categories.json` stops at `uid 8` (*Unmanned Systems*) — so those three
+> classes have also been **retired** in favour of released classes. Telemetry
+> recorded by AITF ≤ 0.4 stays decodable via the `LEGACY_AI_CLASS_UIDS` table
+> in each SDK. The field definitions in the
+> sections below are unchanged — only the OCSF class envelope each event maps
+> onto has changed. See **[ocsf-agentic-crosswalk.md](./ocsf-agentic-crosswalk.md)**
+> for the full field-level mapping.
+>
+> **Note on `type_uid` examples:** the per-class activity tables below still
+> show the legacy `70xxxx` prefix for readability of the activity list. The
+> emitted `type_uid` follows OCSF (`class_uid × 100 + activity_id`) — e.g. a
+> chat inference is `600301` (API Activity 6003, activity 1), not `700101`.
+
+### AITF event → reused OCSF class
+
+| AITF event | OCSF category | OCSF class | `class_uid` |
+|---|---|---|---|
+| AI Model Inference | 6 Application Activity | API Activity | 6003 |
+| AI Tool Execution | 6 Application Activity | API Activity | 6003 |
+| AI Data Retrieval | 6 Application Activity | Datastore Activity | 6005 |
+| AI Model Operations | 6 Application Activity | Application Lifecycle | 6002 |
+| AI Security Finding | 2 Findings | Detection Finding | 2004 |
+| AI Supply Chain | 2 Findings | Vulnerability Finding | 2002 |
+| AI Governance | 2 Findings | Compliance Finding | 2003 |
+| AI Identity | 3 IAM | Authentication | 3002 |
+| AI Asset Inventory | 5 Discovery | Inventory Info | 5001 |
+| AI Agent Activity (lifecycle) | 6 Application Activity | API Activity | 6003\* |
+| AI Delegation (lifecycle) | 3 IAM | Authorize Session | 3003\* |
+| AI Agent Communication (A2A/ACP/ANP) | 6 Application Activity | API Activity | 6003\* |
+
+\* Retired from the unratified `ai` category. Agent activity and agent-to-agent
+communication were provisional `9001`/`9003`; they are request/response
+operations between agents, so **API Activity** is their released home.
+Delegation lifecycle was provisional `9002`; **Authorize Session** is OCSF's
+released class for "privileges, groups or roles assigned to a new user
+session", which is what minting a delegation does. Agent session start/stop MAY
+instead use **Application Lifecycle (6002)** where the agent is modelled as a
+managed application.
+
+AI events that share a `class_uid` (e.g. inference, tool execution and agent
+lifecycle → 6003) are distinguished by `activity_id` and by the presence of the
+`ai_operation` profile (`ai_agent`/`ai_model`/`delegation`). Detection content
+MUST filter on `class_uid` **and** an `ai_operation` field.
 
 ---
 
-## Class 7001: AI Model Inference
+## AI Model Inference — OCSF API Activity (class_uid 6003)
 
 Represents an AI model inference operation (request + response).
 
@@ -98,7 +146,7 @@ Represents an AI model inference operation (request + response).
 
 ---
 
-## Class 7002: AI Agent Activity
+## AI Agent Activity — OCSF API Activity (class_uid 6003)
 
 Represents an AI agent lifecycle event.
 
@@ -144,7 +192,7 @@ Represents an AI agent lifecycle event.
 
 ---
 
-## Class 7003: AI Tool Execution
+## AI Tool Execution — OCSF API Activity (class_uid 6003)
 
 Represents a tool/function execution, including MCP tools and skills.
 
@@ -178,7 +226,7 @@ Represents a tool/function execution, including MCP tools and skills.
 
 ---
 
-## Class 7004: AI Data Retrieval
+## AI Data Retrieval — OCSF Datastore Activity (class_uid 6005)
 
 Represents RAG and vector search operations.
 
@@ -213,7 +261,7 @@ Represents RAG and vector search operations.
 
 ---
 
-## Class 7005: AI Security Finding
+## AI Security Finding — OCSF Detection Finding (class_uid 2004)
 
 Represents a security finding in AI operations.
 
@@ -249,7 +297,7 @@ Represents a security finding in AI operations.
 
 ---
 
-## Class 7006: AI Supply Chain
+## AI Supply Chain — OCSF Vulnerability Finding (class_uid 2002)
 
 Represents AI supply chain events (model provenance, integrity).
 
@@ -278,7 +326,7 @@ Represents AI supply chain events (model provenance, integrity).
 
 ---
 
-## Class 7007: AI Governance
+## AI Governance — OCSF Compliance Finding (class_uid 2003)
 
 Represents compliance and governance events.
 
@@ -306,7 +354,7 @@ Represents compliance and governance events.
 
 ---
 
-## Class 7008: AI Identity
+## AI Identity — OCSF Authentication (class_uid 3002)
 
 Represents agent identity, authentication, authorization, delegation, and trust events.
 
@@ -393,7 +441,7 @@ Represents agent identity, authentication, authorization, delegation, and trust 
 
 ---
 
-## Class 7009: AI Model Operations
+## AI Model Operations — OCSF Application Lifecycle (class_uid 6002)
 
 Represents model lifecycle events — training, evaluation, deployment, monitoring, and serving operations.
 
@@ -565,7 +613,7 @@ Represents model lifecycle events — training, evaluation, deployment, monitori
 
 ---
 
-## Class 7010: AI Asset Inventory
+## AI Asset Inventory — OCSF Inventory Info (class_uid 5001)
 
 Represents AI asset lifecycle events — registration, discovery, audit, risk classification, drift detection, and decommissioning. Enables organizations to maintain a complete, auditable inventory of all AI system components as required by CoSAI AI Incident Response preparation guidance.
 

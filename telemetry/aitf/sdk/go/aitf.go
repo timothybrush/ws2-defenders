@@ -31,7 +31,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const Version = "1.0.0"
+const Version = "0.4.0"
 
 // Instrumentor manages all AITF sub-instrumentors.
 type Instrumentor struct {
