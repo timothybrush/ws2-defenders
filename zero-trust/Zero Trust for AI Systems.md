@@ -1,12 +1,14 @@
 ---
 title: "Zero Trust for AI Systems"
 author: "Workstream 2: Preparing Defenders for a Changing Threat Landscape"
-date: 20 August 2026
+date: 4 September 2026
 ---
 
 # Zero Trust for AI Systems
 
 OASIS Open Project : [Coalition for Secure AI (CoSAI)](https://github.com/cosai-oasis) [Workstream 2: Preparing Defenders for a Changing Threat Landscape](https://github.com/cosai-oasis/ws2-defenders)
+
+Approved by the CoSAI Project Governing Board on 4 September 2026.
 
 
 # Table of Contents
@@ -524,16 +526,16 @@ Table 3. Zero Trust publication frameworks comparison
 * Nik Kale, Cisco
 * Victor Lu  
 * Asmae Mhassni , Intel
-* Dhaval Parekh, 
+* Dhaval Parekh, Zscaler
 * David Pierce, Paypal
 * Marina Zeldin, Dell
 
 ## Editors
 
 * Jason Garman, Amazon 
-* Josiah Hagen  
+* Josiah Hagen, indepedent
 * Igor Pedan, Dell  
-* Bill Stout
+* Bill Stout, independent
 
 ## Reviewers
 
