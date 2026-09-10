@@ -816,7 +816,7 @@ Maps each conceptual field to the [AITF](https://github.com/cosai-oasis/ws2-defe
 | Trigger Type & Source Event | MUST | `gen_ai.agent.*` trigger attrs | n/a |
 | Action Type | MUST | `gen_ai.agent.step.type` | `action.{tool,method}` (6.4) |
 | Execution Status | MUST | span status + `error.type` | n/a |
-| Stop Reason | SHOULD | `gen_ai.response.finish_reason` | n/a |
+| Stop Reason | SHOULD | `gen_ai.response.finish_reasons` | n/a |
 | Surface / App | MUST | `gen_ai.*` (surface attr) | n/a (policy input) |
 | System Prompt / Instruction Config | MUST | `gen_ai.*` (system message / request) | `policy_profile_ref` (6.1) |
 | Autonomy Level | SHOULD | `gen_ai.agent.state` | n/a |
@@ -831,10 +831,10 @@ Maps each conceptual field to the [AITF](https://github.com/cosai-oasis/ws2-defe
 | Encoded / Obfuscated Payload Indicator | MAY | `security.*` obfuscation / decoded-form attrs | n/a |
 | Response / Model Output | MUST | `gen_ai.completion` | n/a |
 | Citations / Source Attribution | MUST | `rag.*` (source) + output citation attrs | n/a |
-| Output Egress Destination | MUST | `mcp.tool.call.arguments`, `security.pii.*` | `resource_indicators` (6.3) |
+| Output Egress Destination | MUST | `gen_ai.tool.call.arguments`, `security.pii.*` | `resource_indicators` (6.3) |
 | Observation / Thought (reasoning trace) | SHOULD | `gen_ai.agent.step.thought` | n/a |
 | Guardrail (Output) Verdict | MUST | `security.guardrail.*`, `security.pii.*` | `constraints.data_classification` (6.3) |
-| LLM Refusal | MUST | `gen_ai.response.finish_reason`, `security.*` | n/a |
+| LLM Refusal | MUST | `gen_ai.response.finish_reasons`, `security.*` | n/a |
 | Model Name + Version | MUST | `gen_ai.request.model`, `gen_ai.provider.name` | `approved_software_refs` (6.1) |
 | Provider / Endpoint Identity | MAY | `gen_ai.provider.name` | n/a |
 | Inference Parameters | MUST | `gen_ai.request.temperature/top_p/max_tokens/stop_sequences/seed` | n/a |
@@ -843,7 +843,7 @@ Maps each conceptual field to the [AITF](https://github.com/cosai-oasis/ws2-defe
 | Model Provenance / Signing / Hash | SHOULD | `supply_chain.model.hash/signed/source`, `supply_chain.ai_bom.*` | `software_hash` (6.2), `approved_software_refs` (6.1) |
 | Pre-Forward-Pass State Digest/Vector | MAY | `drift.*` | n/a |
 | Token Malformation / Context-Corruption Indicator | MAY | `drift.*`, `quality.*` | n/a |
-| Tool Call I/O | MUST | `mcp.tool.name/call.arguments/result`, `gen_ai.tool.*` | `action` (6.4) |
+| Tool Call I/O | MUST | `gen_ai.tool.call.arguments` / `gen_ai.tool.call.result`, `mcp.tool.name` | `action` (6.4) |
 | Tool Name | MUST | `mcp.tool.name` | n/a |
 | Tool Type / Trust Boundary | MUST | `mcp.*` vs internal | n/a |
 | Tool ID | MAY | `mcp.server.name` + tool id | n/a |
@@ -930,7 +930,7 @@ The conventions are richer than is commonly assumed, and several fields in fact 
 - **Memory.** A **`gen_ai.memory.*`** namespace: `store.id`, `record.id`, `record.count`, `query.text`, `records`, with a `MemoryRecord` schema (`content`, `id`, `metadata`, `score`); seven memory operations on `gen_ai.operation.name` (`create_memory`, `create_memory_store`, `delete_memory`, `delete_memory_store`, `search_memory`, `update_memory`, `upsert_memory`); and a **`gen_ai.memory.client`** span, already implemented by `aws-bedrock-agentcore` and `google-adk`.
 - **Evaluation.** A `gen_ai.evaluation.result` event with `gen_ai.evaluation.name`, `.score.value`, `.score.label`, `.explanation`.
 - **Metrics.** `gen_ai.client.operation.duration`, `gen_ai.client.token.usage`, `gen_ai.client.operation.time_to_first_chunk` / `.time_per_output_chunk`, `gen_ai.execute_tool.duration`, **`gen_ai.invoke_agent.duration` / `.inference_calls` / `.tool_calls`**, `gen_ai.invoke_workflow.duration`, `gen_ai.server.request.duration` / `.time_to_first_token` / `.time_per_output_token`.
-- **MCP.** A distinct **`mcp.*`** namespace: `mcp.method.name`, `mcp.protocol.version`, `mcp.request.id`, `mcp.resource.uri`, `mcp.session.id`, plus `mcp.client.operation.duration`, `mcp.server.operation.duration`, and client/server `session.duration` metrics.
+- **MCP.** A distinct **`mcp.*`** namespace: `mcp.method.name`, `mcp.protocol.version`, `mcp.resource.uri`, `mcp.session.id`, plus `mcp.client.operation.duration`, `mcp.server.operation.duration`, and client/server `session.duration` metrics.
 
 Three existing GenAI attributes already close gaps this document had left open. `gen_ai.system_instructions` gives **System Prompt** (§5) a home. `gen_ai.tool.definitions` gives **Tool Definition Digest** (§9) one; the raw material for a digest is already in scope, and only the *hash-and-compare* is missing. And `gen_ai.invoke_agent.tool_calls` / `.inference_calls` are already the shape of **Loop / Step-Count Signal** (§12) and part of **Resource-Consumption Aggregate** (§12), as metrics rather than attributes.
 
@@ -1013,12 +1013,12 @@ For each cluster of fields defined above: where it lands in OCSF **today**, the 
 | Field cluster (tier) | OCSF today | Gap | AITF interim carrier | Recommended OCSF change |
 | :------ | :---------- | :---------------------- | :---------- | :---------------------------------------------------- |
 | Execution context & agent identity (MUST / SHOULD) | API Activity (6003) with the `ai_operation` profile: `ai_agent` (stable `uid`, restart-sensitive `instance_uid`, framework `type_id`, `charter`, backing `ai_model`), `delegation`, `message_context` | No workflow / run / turn / step identifiers, action type, trigger type, or autonomy level | `gen_ai.agent.*`; proposed **Agent Activity (9001)** | Ratify an **AI agent activity** class for agent-originated control-plane events (tracking [ocsf-schema#1640](https://github.com/ocsf/ocsf-schema/issues/1640); the OCSF working group agreed 2026-09-04 that Application Lifecycle is not the home); extend the `ai_operation` profile with the run / turn / step identifiers, action type, trigger type |
-| Stop reason (SHOULD) | `ai_stop_reason_id` on the `ai_operation` profile ([ocsf-schema#1704](https://github.com/ocsf/ocsf-schema/pull/1704), maintainer-approved 2026-09-04): Unknown / End of Turn / Token Limit / Tool Use / Session Stop / Content Filter / Other | None once merged | `gen_ai.response.finish_reason` | Merge #1704; no further ask |
+| Stop reason (SHOULD) | `ai_stop_reason_id` on the `ai_operation` profile ([ocsf-schema#1704](https://github.com/ocsf/ocsf-schema/pull/1704), maintainer-approved 2026-09-04): Unknown / End of Turn / Token Limit / Tool Use / Session Stop / Content Filter / Other | None once merged | `gen_ai.response.finish_reasons` | Merge #1704; no further ask |
 | Prompt / response / system prompt (MUST) | `message_context` on the `ai_operation` profile: `prompt_text`, `response_text`, token counts, `ai_role_id`, session `uid` | No content hash, redaction / PII flags, system prompt, or attachment identity | `gen_ai.prompt` / `gen_ai.completion` / system message | Extend **`message_context`** with `prompt_hash` / `response_hash`, `is_redacted`, `system_prompt` (+ hash), attachment identity; this is the OCSF expression of the hash-first principle. A separate `ai_content` object only if content must attach to classes other than 6003 |
 | Input trust classification (MUST) | Detection Finding (2004), partial | No trust-provenance enum | `security.*` (trust/threat) | New **`trust_level`** enum (trusted-instruction / trusted-data / untrusted-data / adversarial-suspected), usable on content and message objects |
 | Guardrail verdicts (MUST) | Detection Finding (2004), partial | No guardrail-verdict object | `security.guardrail.*`, `security.blocked`, `security.threat_type` | New **`ai_guardrail`** object (type, verdict, score, blocked flag, threat reference) |
 | Threat classification / **ATLAS technique tag** (MUST) | Detection Finding (2004) `attacks[]`, documented as compatible with MITRE ATLAS tactics, techniques and sub-techniques; `attack.version` carries the ATLAS matrix version | None: producer guidance only | `security.threat_type` + `compliance.framework=mitre_atlas` / `compliance.control_id` | No schema change. Populate `attacks[].technique.uid` with `AML.Txxxx`, `attacks[].tactic` with the ATLAS tactic, `attacks[].version` with the ATLAS matrix version |
-| Output egress (MUST) | Network / HTTP Activity (partial) | No link from model output → egress channel/recipient | `mcp.tool.call.arguments`, `security.pii.*` | Add **egress correlation** attribute on Agent Activity linking output → destination/recipient/URL |
+| Output egress (MUST) | Network / HTTP Activity (partial) | No link from model output → egress channel/recipient | `gen_ai.tool.call.arguments`, `security.pii.*` | Add **egress correlation** attribute on Agent Activity linking output → destination/recipient/URL |
 | Model & serving (SHOULD) | API Activity (6003) model attrs; App Lifecycle (6002); Vulnerability Finding (2002) | Provenance/signing not standardized in profile | `gen_ai.request.model`, `gen_ai.provider.name`, `supply_chain.*` | Standardize model name/version/provider + **provenance/signing** attrs in `ai_operation` |
 | Tools & MCP (MUST / SHOULD) | API Activity (6003) | No MCP object, tool trust-boundary, ACL/scope | `mcp.*`, `identity.auth.scope_granted` | Land **`ai_tool`** with its `mcp` sub-block, `primitive` axis and `transaction_uid` join key, drafted in [ocsf-schema#1729](https://github.com/ocsf/ocsf-schema/pull/1729); add **`tool_trust_boundary`** enum (mcp / internal / direct-storage) + scope attr to it |
 | Memory (MUST / SHOULD) | Datastore Activity (6005), loosely | No memory-operation object, provenance, poisoning/isolation signals | `memory.*`, `memory.security.*` | New **`ai_memory`** object (op, provenance, footprint, poisoning score, isolation-verified) |
@@ -1152,7 +1152,7 @@ Closing the AOS gaps surfaced attributes missing from this document's bindings. 
 | 4 | **Citation attributes** on output, with a resolution flag against retrieval | `gen_ai.retrieval.documents` covers the retrieval side; nothing on the output side | **OTel** |
 | 5 | **Tool contract attributes**: definition digest; consistent request↔result correlator | **`gen_ai.tool.definitions` and `gen_ai.tool.call.id` both exist upstream** | **Resolved upstream.** AITF adopts the names; only `…definitions.hash` remains to file with OTel |
 | 6 | **Execution-environment attributes**: sandbox mode, runtime, OS/architecture, timeout, egress policy | Runtime and platform are already covered by **core resource conventions** (`host.*`, `os.*`, `process.runtime.*`). **Sandbox mode and egress policy are not** | **Reuse** core resource semconv; file only `sandbox` and egress policy as new |
-| 7 | **MCP primitive discriminator**, server version and transport | **A full `mcp.*` namespace exists**: `mcp.method.name`, `mcp.protocol.version`, `mcp.request.id`, `mcp.resource.uri`, `mcp.session.id`, plus client/server duration metrics | **Largely resolved upstream.** `mcp.method.name` partially serves as the discriminator; file only an explicit primitive value set |
+| 7 | **MCP primitive discriminator**, server version and transport | An `mcp.*` namespace exists upstream: `mcp.method.name`, `mcp.protocol.version`, `mcp.resource.uri`, `mcp.session.id`, plus client/server operation and session duration metrics | **Largely resolved upstream.** `mcp.method.name` partially serves as the discriminator; file only an explicit primitive value set |
 | 8 | **A2A attributes**: task lifecycle, push-notification callback registration, peer agent card | **Nothing.** The GenAI repository covers MCP but has no A2A conventions | **OTel**: an `a2a.*` namespace, parallel to `mcp.*`, is the natural proposal |
 | 9 | **Trigger attributes**: user-initiated vs autonomous, and source event | Nothing | **OTel** ([D.3](#d3-what-cosai-asks-opentelemetry-to-include) item 6) |
 | 10 | **Tenant / organization** | No tenant attribute, but **resource attributes are the established mechanism** for this class of value | **Reuse** resource semconv; propose a tenant attribute only if none fits |
