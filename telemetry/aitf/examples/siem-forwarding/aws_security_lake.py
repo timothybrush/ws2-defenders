@@ -72,13 +72,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 
 # Custom source registration for Security Lake
 # Source name: "AITF-AI-Telemetry"
-# OCSF Category: 7 (AI System Activity)
-# Event classes: 7001-7008
+# Under OCSF class reuse, AITF AI events reuse existing OCSF classes (enriched
+# with the ai_operation profile) and the proposed ai category (9), so they span
+# several OCSF categories rather than a single bespoke Category 7.
+# Reused classes: 6003 API Activity (inference/tool), 6005 Datastore Activity
+# (retrieval), 2004 Detection Finding (security), 2002 Vulnerability Finding
+# (supply chain), 2003 Compliance Finding (governance), 3002 Authentication
+# (identity), 3003 authorize_session (delegation lifecycle), and 6003 again for
+# agent lifecycle / agent-to-agent communication.
 SECURITY_LAKE_CONFIG = {
     "source_name": "AITF-AI-Telemetry",
-    "source_version": "1.0.0",
-    "ocsf_category": 7,
-    "event_classes": [7001, 7002, 7003, 7004, 7005, 7006, 7007, 7008],
+    "source_version": "0.4.0",
+    "ocsf_categories": [2, 3, 6, 9],
+    "event_classes": [6003, 6005, 6002, 2004, 2002, 2003, 3002, 3003, 5001],
     "aws_region": os.getenv("AWS_REGION", "us-east-1"),
     "aws_account_id": os.getenv("AWS_ACCOUNT_ID", "123456789012"),
     # Security Lake S3 bucket follows a standard naming convention:
@@ -102,10 +108,11 @@ SECURITY_LAKE_CONFIG = {
 # ---------------------------------------------------------------------------
 
 def build_ocsf_parquet_schema() -> pa.Schema:
-    """Build a PyArrow schema that maps OCSF Category 7 events to Parquet.
+    """Build a PyArrow schema that maps AITF AI OCSF events to Parquet.
 
-    Security Lake requires Parquet files with a schema that matches
-    the OCSF class definition. This schema covers the common base
+    AITF AI events reuse existing OCSF classes (ai_operation profile) plus the
+    proposed ai category (9). Security Lake requires Parquet files with a schema
+    that matches the OCSF class definition. This schema covers the common base
     fields plus AI-specific extensions.
     """
     return pa.schema([
@@ -184,7 +191,7 @@ def ocsf_event_to_parquet_row(event: dict[str, Any]) -> dict[str, Any]:
     return {
         # Base fields
         "activity_id": event.get("activity_id", 0),
-        "category_uid": event.get("category_uid", 7),
+        "category_uid": event.get("category_uid", 0),
         "class_uid": event.get("class_uid", 0),
         "type_uid": event.get("type_uid", 0),
         "time": event.get("time", ""),
@@ -193,7 +200,7 @@ def ocsf_event_to_parquet_row(event: dict[str, Any]) -> dict[str, Any]:
         "message": event.get("message", ""),
 
         # Metadata (flattened)
-        "metadata_version": metadata.get("version", "1.1.0"),
+        "metadata_version": metadata.get("version", "1.9.0"),
         "metadata_uid": metadata.get("uid", ""),
         "metadata_correlation_uid": metadata.get("correlation_uid", ""),
         "metadata_logged_time": metadata.get("logged_time", ""),
@@ -572,21 +579,28 @@ ATHENA_QUERIES = {
     """,
 
     "security_findings_by_severity": """
-        -- AI security findings grouped by severity and OWASP category
+        -- AI security findings grouped by severity and OWASP category.
+        -- OCSF class reuse: AI security findings are Detection Finding (2004),
+        -- shared with non-AI detection findings. This table only holds AITF AI
+        -- events, but we still require an OWASP LLM category to be explicit that
+        -- only AI findings are counted.
         SELECT finding_type, owasp_category, risk_level,
                count(*) as finding_count,
                avg(risk_score) as avg_risk_score,
                avg(confidence) as avg_confidence,
                sum(CASE WHEN blocked THEN 1 ELSE 0 END) as blocked_count
         FROM "amazon_security_lake_glue_db"."amazon_security_lake_table_aitf_ai_telemetry"
-        WHERE class_uid = 7005
+        WHERE class_uid = 2004
+          AND owasp_category IS NOT NULL
           AND eventDay >= date_format(current_timestamp - interval '7' day, '%Y%m%d')
         GROUP BY finding_type, owasp_category, risk_level
         ORDER BY avg_risk_score DESC
     """,
 
     "model_usage_summary": """
-        -- AI model usage summary: tokens, cost, latency by model and provider
+        -- AI model usage summary: tokens, cost, latency by model and provider.
+        -- OCSF class reuse: Model Inference and Tool Execution both use API
+        -- Activity (6003); tool_name IS NULL isolates inference events.
         SELECT model_id, model_provider,
                count(*) as inference_count,
                sum(input_tokens) as total_input_tokens,
@@ -595,7 +609,8 @@ ATHENA_QUERIES = {
                avg(latency_total_ms) as avg_latency_ms,
                max(latency_total_ms) as max_latency_ms
         FROM "amazon_security_lake_glue_db"."amazon_security_lake_table_aitf_ai_telemetry"
-        WHERE class_uid = 7001
+        WHERE class_uid = 6003
+          AND tool_name IS NULL
           AND eventDay >= date_format(current_timestamp - interval '30' day, '%Y%m%d')
         GROUP BY model_id, model_provider
         ORDER BY total_cost_usd DESC
@@ -609,7 +624,7 @@ ATHENA_QUERIES = {
                sum(CASE WHEN blocked THEN 1 ELSE 0 END) as blocked_count,
                avg(confidence) as avg_confidence
         FROM "amazon_security_lake_glue_db"."amazon_security_lake_table_aitf_ai_telemetry"
-        WHERE class_uid = 7005
+        WHERE class_uid = 2004  -- Detection Finding (was 7005 Security Finding)
           AND finding_type IN ('prompt_injection', 'jailbreak')
           AND eventDay >= date_format(current_timestamp - interval '7' day, '%Y%m%d')
         GROUP BY 1, 2
@@ -622,7 +637,7 @@ ATHENA_QUERIES = {
                count(*) as step_count,
                count(DISTINCT session_id) as unique_sessions
         FROM "amazon_security_lake_glue_db"."amazon_security_lake_table_aitf_ai_telemetry"
-        WHERE class_uid = 7002
+        WHERE class_uid = 6003  -- API Activity (agent lifecycle; filter on ai_agent)
           AND eventDay >= date_format(current_timestamp - interval '7' day, '%Y%m%d')
         GROUP BY agent_name, session_id, step_type
         ORDER BY step_count DESC
@@ -640,7 +655,7 @@ ATHENA_QUERIES = {
         JOIN "amazon_security_lake_glue_db"."amazon_security_lake_table_vpc_flow" net
           ON ai.metadata_correlation_uid = net.metadata_correlation_uid
           AND ai.eventDay = net.eventDay
-        WHERE ai.class_uid = 7005
+        WHERE ai.class_uid = 2004  -- Detection Finding (was 7005 Security Finding)
           AND ai.risk_score >= 70
           AND ai.eventDay >= date_format(current_timestamp - interval '1' day, '%Y%m%d')
         ORDER BY ai.risk_score DESC

@@ -409,6 +409,50 @@ Emitted when potential session hijacking is detected.
 | `identity.session.ip_address` | string | Anomalous source IP | Recommended |
 | `identity.session.user_agent` | string | Anomalous user agent | Recommended |
 
+### `identity.approval.requested` [RFC v0.4 gap closure]
+
+Emitted when a human is asked to approve an operation. Pairs with `identity.approval.decided` via `identity.approval.id`. See [`identity-spans.md`](identity-spans.md#human-approval--elicitation-rfc-v04-gap-closure).
+
+| Attribute | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `identity.approval.id` | string | Correlation ID joining request to decision | Yes |
+| `identity.approval.required` | boolean | Whether approval was required | Yes |
+| `identity.approval.status` | string | `"pending"` at request time | Yes |
+| `identity.approval.operation` | string | Operation being approved, as shown to the approver | Yes |
+| `identity.approval.prompt_hash` | string | SHA-256 of the exact text shown to the approver | Yes |
+| `identity.approval.requested_at` | string | RFC 3339 request timestamp | Yes |
+| `identity.approval.trigger` | string | `"policy"`, `"risk_score"`, `"scope_escalation"`, `"first_use"`, `"destructive_action"`, `"elicitation"` | Recommended |
+| `identity.approval.channel` | string | `"cli"`, `"web_ui"`, `"chat"`, `"email"`, `"mcp_elicitation"`, `"api"` | Recommended |
+| `identity.approval.timeout_ms` | int | Configured approval timeout | Optional |
+| `identity.approval.timeout_action` | string | `"deny"`, `"allow"`, `"escalate"` | Recommended |
+| `identity.approval.prior_denials` | int | Prior denials for this operation in the session | Optional |
+| `identity.approval.elicitation.fields` | string[] | Field names solicited — never values | Optional |
+| `identity.approval.elicitation.schema_hash` | string | Digest of the requested-input schema | Optional |
+
+### `identity.approval.decided` [RFC v0.4 gap closure]
+
+Emitted when the approval outcome is known. Carries the same `identity.approval.id` as the corresponding request. Absence of this event MUST NOT be read as a denial — see `identity.approval.status`.
+
+| Attribute | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `identity.approval.id` | string | Correlation ID from the request | Yes |
+| `identity.approval.status` | string | `"resolved"` or `"expired"` | Yes |
+| `identity.approval.decision` | string | `"approved"`, `"denied"`, `"timeout"`, `"auto_approved"`, `"bypassed"`, `"cancelled"` | Yes |
+| `identity.approval.approver` | string | Resolved approver identity — not a session token | Yes |
+| `identity.approval.approver_type` | string | `"human"`, `"policy"`, `"automation"`, `"none"` | Yes |
+| `identity.approval.scope_binding.result` | string | `"match"`, `"mismatch"`, `"not_checked"` | Yes |
+| `identity.approval.decided_at` | string | RFC 3339 decision timestamp | Yes |
+| `identity.approval.latency_ms` | int | Request-to-decision time — the approval-fatigue signal | Yes |
+| `identity.approval.approver_verified` | boolean | Approver authenticated at approval time | Recommended |
+| `identity.approval.operation_hash` | string | SHA-256 of the operation as executed | Recommended |
+| `identity.approval.scope_binding.divergence` | string[] | Arguments differing between approved and executed | Recommended |
+| `identity.approval.scope` | string | `"single_use"`, `"session"`, `"always"`, `"time_bounded"` | Recommended |
+| `identity.approval.bypass_reason` | string | Present when `decision` is `"bypassed"` | Recommended |
+| `identity.approval.auth_method` | string | `"session"`, `"reauth"`, `"mfa"`, `"webauthn"`, `"none"` | Optional |
+| `identity.approval.remembered` | boolean | Decision cached and reused without re-prompting | Optional |
+
+`identity.approval.decision`, `.approver_type`, and `.latency_ms` SHOULD also be mirrored onto the span the approval gates, so an enforcement decision is evaluable without a join.
+
 ---
 
 ## Asset Inventory Events
@@ -484,6 +528,120 @@ Emitted when an asset's audit is overdue.
 | `asset.audit.next_audit_due` | string | Overdue audit date | Yes |
 | `asset.risk_classification` | string | Risk level | Recommended |
 | `asset.deployment_environment` | string | Environment | Recommended |
+
+### `asset.capability.changed` [RFC v0.4 gap closure]
+
+Emitted when an agent's reachable capability set changes — a tool, MCP server, skill, scope, data source, model, or peer agent discovered, added, removed, or modified. MUST NOT be left to be inferred by diffing inventory snapshots; the diff loses the actor, the source, and the approval status. See [`asset-inventory-spans.md`](asset-inventory-spans.md#event-assetcapabilitychanged-rfc-v04-gap-closure).
+
+| Attribute | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `asset.id` | string | Agent or asset whose capability set changed | Yes |
+| `asset.capability.change_type` | string | `"added"`, `"removed"`, `"modified"`, `"scope_expanded"`, `"scope_reduced"`, `"reconfigured"` | Yes |
+| `asset.capability.set.hash` | string | Digest of the canonicalised current set | Yes |
+| `asset.capability.set.previous_hash` | string | Digest of the previously observed set | Yes |
+| `asset.capability.added` | string[] | Capabilities gained | Yes |
+| `asset.capability.change_source` | string | `"deployment"`, `"config"`, `"server_advertised"`, `"marketplace_update"`, `"runtime_discovery"`, `"agent_self_modification"` | Yes |
+| `asset.capability.approved` | boolean | Whether the new set was reviewed and approved | Yes |
+| `asset.capability.detected_at` | string | RFC 3339 observation timestamp | Yes |
+| `asset.capability.removed` | string[] | Capabilities lost | Recommended |
+| `asset.capability.modified` | string[] | Capabilities changed while keeping their name | Recommended |
+| `asset.capability.category` | string[] | `"tool"`, `"mcp_server"`, `"skill"`, `"scope"`, `"data_source"`, `"model"`, `"peer_agent"` | Recommended |
+| `asset.capability.risk_delta` | string | `"increased"`, `"decreased"`, `"unchanged"` | Recommended |
+| `asset.capability.privileged_added` | string[] | Newly gained privileged or destructive capabilities | Recommended |
+| `asset.capability.change_actor` | string | Principal responsible for the change | Recommended |
+| `asset.capability.set.size` | int | Size of the current set | Recommended |
+| `asset.capability.approval_ref` | string | Approval record reference | Optional |
+| `asset.capability.detection_method` | string | `"registration"`, `"periodic_scan"`, `"first_use"`, `"handshake_diff"` | Optional |
+
+### `asset.instrumentation.gap_detected` [RFC v0.4 gap closure]
+
+Emitted when declared instrumentation coverage is not matched by active coverage, or when hooks are found to have been disabled, replaced, or downgraded after startup. This is the event that distinguishes "no events" from "not observed". See [`asset-inventory-spans.md`](asset-inventory-spans.md#instrumentation-coverage--hook-attestation-rfc-v04-gap-closure).
+
+| Attribute | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `asset.id` | string | Asset whose coverage is incomplete | Yes |
+| `asset.instrumentation.enabled` | boolean | Whether instrumentation is active at all | Yes |
+| `asset.instrumentation.version` | string | Instrumentation version in force | Yes |
+| `asset.instrumentation.hooks.declared` | string[] | Hook points claimed | Yes |
+| `asset.instrumentation.hooks.active` | string[] | Hook points verified active | Yes |
+| `asset.instrumentation.hooks.missing` | string[] | The enumerated blind spots | Yes |
+| `asset.instrumentation.coverage_ratio` | double | Fraction of declared hooks active (0.0–1.0) | Yes |
+| `asset.instrumentation.sdk` | string | SDK providing instrumentation | Recommended |
+| `asset.instrumentation.tamper_detected` | boolean | Hooks altered after startup | Recommended |
+| `asset.instrumentation.tamper_indicator` | string | `"hook_removed"`, `"exporter_disabled"`, `"processor_replaced"`, `"version_downgrade"`, `"config_override"` | Optional |
+| `asset.instrumentation.attestation.method` | string | How the coverage claim was established | Recommended |
+| `asset.instrumentation.attestation.verified` | boolean | Whether independently verified | Recommended |
+| `asset.instrumentation.uninstrumented_paths` | string[] | Known silent code paths | Recommended |
+| `asset.instrumentation.exporter.reachable` | boolean | Whether the collector endpoint is reachable | Optional |
+| `asset.instrumentation.dropped_spans` | int | Spans lost since last report | Optional |
+
+---
+
+## A2A Task Lifecycle Events [RFC v0.4 gap closure]
+
+An A2A task is asynchronous and outlives the span that created it, so its transitions cannot be recorded as span attributes alone — the terminal transition will usually belong to a different trace. All events in this section carry `a2a.task.id` and `a2a.task.lifecycle.initiating_trace_id`, which together reconnect an asynchronous completion to its origin. Full attribute definitions are in [`a2a-spans.md`](a2a-spans.md#event-a2atasklifecycle-rfc-v04-gap-closure).
+
+### `a2a.task.lifecycle.transition`
+
+Emitted on every A2A task state transition, including the read-side transitions (`streamed`, `polled`, `resubscribed`) that change no state but reveal who is watching the task.
+
+| Attribute | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `a2a.task.id` | string | Task identifier | Yes |
+| `a2a.task.lifecycle.event` | string | Transition being recorded | Yes |
+| `a2a.task.lifecycle.from_state` | string | State before | Yes |
+| `a2a.task.lifecycle.to_state` | string | State after | Yes |
+| `a2a.task.lifecycle.actor` | string | Identity that caused the transition | Yes |
+| `a2a.task.lifecycle.at` | string | RFC 3339 transition timestamp | Yes |
+| `a2a.task.lifecycle.terminal` | boolean | Whether `to_state` is terminal | Yes |
+| `a2a.task.lifecycle.initiating_trace_id` | string | Trace that created the task | Yes |
+| `a2a.task.lifecycle.actor_type` | string | `"client_agent"`, `"remote_agent"`, `"human"`, `"system"`, `"timeout"`, `"unknown"` | Recommended |
+| `a2a.task.lifecycle.transition_valid` | boolean | Permitted by the A2A state machine | Recommended |
+| `a2a.task.lifecycle.age_ms` | int | Elapsed time since task creation | Recommended |
+| `a2a.task.lifecycle.expected_terminal_by` | string | Deadline for reaching a terminal state | Recommended |
+| `a2a.task.lifecycle.delegated_scope` | string[] | Scopes outstanding while the task is live | Recommended |
+| `a2a.task.lifecycle.delegation_expires_at` | string | Expiry of the backing authority | Recommended |
+| `a2a.task.lifecycle.root_principal` | string | Principal ultimately accountable | Recommended |
+| `a2a.task.lifecycle.failure_reason` | string | Reason for `"failed"` or `"rejected"` | Recommended |
+| `a2a.task.lifecycle.initiating_span_id` | string | Span that created the task | Recommended |
+| `a2a.task.lifecycle.transition_count` | int | Cumulative transitions | Optional |
+| `a2a.task.lifecycle.poll_count` | int | `tasks/get` polls observed | Optional |
+| `a2a.task.lifecycle.resubscribe_count` | int | Stream re-attachments | Optional |
+| `a2a.task.lifecycle.subscriber` | string | Principal attached to the stream | Optional |
+| `a2a.task.lifecycle.cancel_requested_by` | string | Principal that requested cancellation | Optional |
+| `a2a.task.lifecycle.input_required_reason` | string | Why the task awaits input | Optional |
+
+### `a2a.task.lifecycle.orphaned`
+
+Emitted when a task passes `expected_terminal_by` without reaching a terminal state. This is the only signal for a task that fails silently: no error is raised, the task simply stops being mentioned, and the authority delegated to service it stays outstanding.
+
+| Attribute | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `a2a.task.id` | string | Orphaned task | Yes |
+| `a2a.task.lifecycle.orphaned` | boolean | `true` | Yes |
+| `a2a.task.lifecycle.from_state` | string | Last observed state | Yes |
+| `a2a.task.lifecycle.age_ms` | int | Age at detection | Yes |
+| `a2a.task.lifecycle.expected_terminal_by` | string | Deadline that was passed | Yes |
+| `a2a.task.lifecycle.initiating_trace_id` | string | Trace that created the task | Yes |
+| `a2a.task.lifecycle.delegated_scope` | string[] | Authority still outstanding | Recommended |
+| `a2a.task.lifecycle.delegation_expires_at` | string | Whether that authority lapses on its own | Recommended |
+| `a2a.task.lifecycle.root_principal` | string | Principal accountable for the orphan | Recommended |
+| `a2a.task.lifecycle.poll_count` | int | Whether anyone was watching | Optional |
+
+### `a2a.push.config.changed`
+
+Emitted when push notification configuration is set or altered. A change to the callback target on a live task redirects where results are delivered, and SHOULD be treated as an attempted exfiltration until cleared.
+
+| Attribute | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `a2a.task.id` | string | Task the configuration applies to | Yes |
+| `a2a.push.config.changed` | boolean | Whether the target changed after task creation | Yes |
+| `a2a.push.config.url_hash` | string | Digest of the callback URL | Yes |
+| `a2a.push.config.in_allowlist` | boolean | Destination is on the egress allowlist | Recommended |
+| `a2a.push.config.authenticated` | boolean | Whether the callback is authenticated | Recommended |
+| `a2a.push.config.url` | string | Callback URL | Recommended |
+| `a2a.push.config.scheme` | string | `"none"`, `"bearer"`, `"hmac"`, `"mtls"` | Optional |
+| `a2a.push.config.set_by` | string | Principal that altered the configuration | Optional |
 
 ---
 

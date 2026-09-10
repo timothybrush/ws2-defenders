@@ -11,7 +11,7 @@ import (
 	"github.com/girdav01/AITF/sdk/go/semconv"
 )
 
-// OCSFMapper maps OTel spans to OCSF Category 7 AI events.
+// OCSFMapper maps OTel spans to reused OCSF AI events (OCSF PR #1641 / issue #1640).
 type OCSFMapper struct{}
 
 // NewOCSFMapper creates a new OCSF mapper.
@@ -26,22 +26,60 @@ func (m *OCSFMapper) MapSpan(span sdktrace.ReadOnlySpan) interface{} {
 	attrs := spanAttrs(span)
 
 	if m.isInferenceSpan(name, attrs) {
-		return m.mapInference(span, attrs)
+		event := m.mapInference(span, attrs)
+		m.enrichAIOperation(&event.AIBaseEvent, attrs)
+		return event
+	}
+	if m.isAgentCommSpan(name, attrs) {
+		event := m.mapAgentCommunication(span, attrs)
+		if event != nil {
+			m.enrichAIOperation(&event.AIBaseEvent, attrs)
+			return event
+		}
 	}
 	if m.isAgentSpan(name, attrs) {
-		return m.mapAgentActivity(span, attrs)
+		event := m.mapAgentActivity(span, attrs)
+		m.enrichAIOperation(&event.AIBaseEvent, attrs)
+		return event
 	}
 	if m.isToolSpan(name, attrs) {
-		return m.mapToolExecution(span, attrs)
+		event := m.mapToolExecution(span, attrs)
+		m.enrichAIOperation(&event.AIBaseEvent, attrs)
+		return event
 	}
 	if m.isRAGSpan(name, attrs) {
-		return m.mapDataRetrieval(span, attrs)
+		event := m.mapDataRetrieval(span, attrs)
+		m.enrichAIOperation(&event.AIBaseEvent, attrs)
+		return event
 	}
 	if m.isSecuritySpan(name, attrs) {
-		return m.mapSecurityFinding(span, attrs)
+		event := m.mapSecurityFinding(span, attrs)
+		m.enrichAIOperation(&event.AIBaseEvent, attrs)
+		return event
 	}
 
 	return nil
+}
+
+// enrichAIOperation attaches the OCSF ai_operation profile to a mapped event.
+//
+// Populates the OCSF ai_agent object (PR #1641) and delegation context (issue
+// #1640) so every AITF event carries OCSF-conformant agentic attribution.
+func (m *OCSFMapper) enrichAIOperation(event *AIBaseEvent, attrs map[string]interface{}) {
+	if aiAgent := BuildAIAgent(attrs); aiAgent != nil {
+		event.AIAgent = aiAgent
+		if event.AIModel == "" {
+			event.AIModel = aiAgent.AIModel
+		}
+	}
+
+	if delegation := BuildDelegation(attrs); delegation != nil {
+		event.Delegation = delegation
+	}
+
+	if lineage := BuildDelegationLineage(attrs); lineage != nil {
+		event.DelegationLineage = lineage
+	}
 }
 
 // ClassifySpan returns the OCSF event type string for a span, or "" if unrecognized.
@@ -51,6 +89,9 @@ func (m *OCSFMapper) ClassifySpan(span sdktrace.ReadOnlySpan) string {
 
 	if m.isInferenceSpan(name, attrs) {
 		return "model_inference"
+	}
+	if m.isAgentCommSpan(name, attrs) {
+		return "agent_communication"
 	}
 	if m.isAgentSpan(name, attrs) {
 		return "agent_activity"
@@ -77,6 +118,23 @@ func (m *OCSFMapper) isInferenceSpan(name string, attrs map[string]interface{}) 
 	}
 	_, ok := attrs[string(semconv.GenAISystemKey)]
 	return ok
+}
+
+func (m *OCSFMapper) isAgentCommSpan(name string, attrs map[string]interface{}) bool {
+	if strings.HasPrefix(name, "a2a.") ||
+		strings.HasPrefix(name, "acp.") ||
+		strings.HasPrefix(name, "anp.") {
+		return true
+	}
+	for k := range attrs {
+		if strings.HasPrefix(k, "a2a.") ||
+			strings.HasPrefix(k, "acp.") ||
+			strings.HasPrefix(k, "anp.") ||
+			strings.HasPrefix(k, "agent.comm.") {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *OCSFMapper) isAgentSpan(name string, attrs map[string]interface{}) bool {
@@ -204,6 +262,50 @@ func (m *OCSFMapper) mapInference(span sdktrace.ReadOnlySpan, attrs map[string]i
 	event.Message = fmt.Sprintf("%s %s", operation, modelID)
 	event.Time = spanTime(span)
 
+	return event
+}
+
+// mapAgentCommunication maps an A2A/ACP/ANP span to OCSF API Activity (6003)
+// with the ai_operation profile. Returns nil when the span carries no
+// agent-communication context.
+func (m *OCSFMapper) mapAgentCommunication(span sdktrace.ReadOnlySpan, attrs map[string]interface{}) *AIAgentCommunicationEvent {
+	msg := BuildAgentMessage(attrs)
+	if msg == nil {
+		return nil
+	}
+
+	// activity_id from direction: 1 request, 2 response, 3 stream, 4 notification.
+	directionMap := map[string]int{
+		"request":      1,
+		"response":     2,
+		"stream":       3,
+		"notification": 4,
+	}
+	activityID, ok := directionMap[msg.Direction]
+	if !ok {
+		activityID = ActivityOther
+	}
+
+	statusID := StatusSuccess
+	if msg.Status == "failed" || msg.ErrorCode != "" {
+		statusID = StatusFailure
+	}
+
+	name := span.Name()
+	message := name
+	if message == "" {
+		proto := msg.Protocol
+		if proto == "" {
+			proto = "unknown"
+		}
+		message = "agent.comm." + proto
+	}
+
+	event := NewAIAgentCommunicationEvent(msg, activityID)
+	event.StatusID = statusID
+	event.Message = message
+	event.Time = spanTime(span)
+	event.TypeUID = event.ComputeTypeUID()
 	return event
 }
 

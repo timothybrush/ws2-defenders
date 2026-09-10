@@ -42,17 +42,18 @@ const OCSF_TO_CEF_SEVERITY: Record<number, number> = {
   6: 10, // Fatal
 };
 
+// OCSF class names for the classes AITF reuses (verified against OCSF v1.9.0).
+// AI specificity is carried in the ai_operation profile (ai_agent, ai_model).
 const CLASS_UID_TO_NAME: Record<number, string> = {
-  7001: "AI Model Inference",
-  7002: "AI Agent Activity",
-  7003: "AI Tool Execution",
-  7004: "AI Data Retrieval",
-  7005: "AI Security Finding",
-  7006: "AI Supply Chain Event",
-  7007: "AI Governance Event",
-  7008: "AI Identity Event",
-  7009: "AI Model Operations Event",
-  7010: "AI Asset Inventory Event",
+  2002: "Vulnerability Finding",
+  2003: "Compliance Finding",
+  2004: "Detection Finding",
+  3002: "Authentication",
+  3003: "Authorize Session",
+  5001: "Inventory Info",
+  6002: "Application Lifecycle",
+  6003: "API Activity",
+  6005: "Datastore Activity",
 };
 
 function sanitizeCEFValue(value: string): string {
@@ -73,7 +74,7 @@ export function ocsfEventToCEF(
   event: Record<string, unknown>,
   vendor = "AITF",
   product = "AI-Telemetry-Framework",
-  version = "1.0.0"
+  version = "0.4.0"
 ): string {
   const classUid = (event.class_uid as number) ?? 0;
   const activityId = (event.activity_id as number) ?? 0;
@@ -104,7 +105,7 @@ export function ocsfEventToCEF(
   ext.push(`cs1=${classUid}`, "cs1Label=ocsf_class_uid");
   ext.push(`cs2=${activityId}`, "cs2Label=ocsf_activity_id");
   ext.push(
-    `cs3=${(event.category_uid as number) ?? 7}`,
+    `cs3=${(event.category_uid as number) ?? 6}`,
     "cs3Label=ocsf_category_uid"
   );
 
@@ -217,7 +218,7 @@ export class CEFSyslogExporter implements SpanExporter {
     this._tlsRejectUnauthorized = options.tlsRejectUnauthorized ?? true;
     this._vendor = options.vendor ?? "AITF";
     this._product = options.product ?? "AI-Telemetry-Framework";
-    this._version = options.version ?? "1.0.0";
+    this._version = options.version ?? "0.4.0";
     this._mapper = new OCSFMapper();
   }
 

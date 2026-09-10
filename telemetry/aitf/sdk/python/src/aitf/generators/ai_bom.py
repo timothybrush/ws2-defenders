@@ -39,7 +39,7 @@ from aitf.semantic_conventions.attributes import (
 logger = logging.getLogger(__name__)
 
 _GENERATOR_NAME = "aitf-ai-bom-generator"
-_GENERATOR_VERSION = "1.0.0"
+_GENERATOR_VERSION = "0.4.0"
 _AITF_BOM_SPEC_VERSION = "1.0"
 
 # Maximum number of components to track (prevent unbounded memory)

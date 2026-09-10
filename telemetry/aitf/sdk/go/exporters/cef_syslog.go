@@ -33,17 +33,19 @@ var ocsfToCEFSeverity = map[int]int{
 	6: 10, // Fatal
 }
 
+// classUIDToName maps the reused OCSF class UIDs that AITF emits to display
+// names. Inference and tool execution both reuse API Activity (6003); they are
+// distinguished by activity_id and the ai_operation profile.
 var classUIDToName = map[int]string{
-	7001: "AI Model Inference",
-	7002: "AI Agent Activity",
-	7003: "AI Tool Execution",
-	7004: "AI Data Retrieval",
-	7005: "AI Security Finding",
-	7006: "AI Supply Chain Event",
-	7007: "AI Governance Event",
-	7008: "AI Identity Event",
-	7009: "AI Model Operations Event",
-	7010: "AI Asset Inventory Event",
+	2002: "Vulnerability Finding",
+	2003: "Compliance Finding",
+	2004: "Detection Finding",
+	3002: "Authentication",
+	3003: "Authorize Session",
+	5001: "Inventory Info",
+	6002: "Application Lifecycle",
+	6003: "API Activity",
+	6005: "Datastore Activity",
 }
 
 // sanitizeCEFValue escapes special characters in CEF extension values.
@@ -93,7 +95,7 @@ func OCSFEventToCEF(event map[string]interface{}, vendor, product, version strin
 	ext = append(ext, "cs1Label=ocsf_class_uid")
 	ext = append(ext, fmt.Sprintf("cs2=%d", activityID))
 	ext = append(ext, "cs2Label=ocsf_activity_id")
-	ext = append(ext, fmt.Sprintf("cs3=%d", getInt(event, "category_uid", 7)))
+	ext = append(ext, fmt.Sprintf("cs3=%d", getInt(event, "category_uid", 6)))
 	ext = append(ext, "cs3Label=ocsf_category_uid")
 
 	// Model information
@@ -227,7 +229,7 @@ func NewCEFSyslogExporter(opts ...CEFSyslogOption) (*CEFSyslogExporter, error) {
 		useTLS:   true,
 		vendor:   "AITF",
 		product:  "AI-Telemetry-Framework",
-		version:  "1.0.0",
+		version:  "0.4.0",
 		mapper:   ocsf.NewOCSFMapper(),
 	}
 	for _, opt := range opts {

@@ -1,0 +1,41 @@
+Metadata-Version: 2.4
+Name: aitf
+Version: 1.0.0
+Summary: AI Telemetry Framework - Security-first telemetry for AI systems built on OpenTelemetry and OCSF
+Author: AITF Contributors
+License: Apache-2.0
+Project-URL: Homepage, https://github.com/girdav01/AITF
+Project-URL: Documentation, https://github.com/girdav01/AITF/tree/main/spec
+Project-URL: Repository, https://github.com/girdav01/AITF
+Project-URL: Issues, https://github.com/girdav01/AITF/issues
+Keywords: ai,telemetry,opentelemetry,ocsf,security,observability,llm,agents,mcp
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: System :: Monitoring
+Classifier: Topic :: Security
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: opentelemetry-api>=1.20.0
+Requires-Dist: opentelemetry-sdk>=1.20.0
+Requires-Dist: pydantic>=2.0
+Provides-Extra: exporters
+Requires-Dist: opentelemetry-exporter-otlp>=1.20.0; extra == "exporters"
+Requires-Dist: aiohttp>=3.9.0; extra == "exporters"
+Provides-Extra: processors
+Requires-Dist: regex>=2023.0; extra == "processors"
+Provides-Extra: all
+Requires-Dist: aitf[exporters,processors]; extra == "all"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21; extra == "dev"
+Requires-Dist: pytest-cov>=4.0; extra == "dev"
+Requires-Dist: ruff>=0.1.0; extra == "dev"
+Requires-Dist: mypy>=1.5; extra == "dev"
